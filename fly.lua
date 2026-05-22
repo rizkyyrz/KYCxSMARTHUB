@@ -1,18 +1,25 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-
 local player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+
+repeat task.wait() until player:FindFirstChild("PlayerGui")
 
 local FlySpeed = 60
 local Flying = false
 local FlyConnection
 local FlyBV
 
+local oldGui = player.PlayerGui:FindFirstChild("MiniFlyGui")
+if oldGui then
+    oldGui:Destroy()
+end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MiniFlyGui"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game.CoreGui
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Enabled = true
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local Icon = Instance.new("TextButton")
 Icon.Size = UDim2.new(0, 45, 0, 45)
@@ -22,6 +29,8 @@ Icon.Text = "✈"
 Icon.TextColor3 = Color3.fromRGB(255, 255, 255)
 Icon.TextSize = 24
 Icon.Font = Enum.Font.GothamBold
+Icon.Visible = true
+Icon.ZIndex = 999
 Icon.Parent = ScreenGui
 Icon.Active = true
 Icon.Draggable = true
@@ -35,6 +44,7 @@ Main.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Main.Visible = false
 Main.Active = true
 Main.Draggable = true
+Main.ZIndex = 999
 Main.Parent = ScreenGui
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
@@ -48,6 +58,7 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 1000
 Title.Parent = Main
 
 local Close = Instance.new("TextButton")
@@ -58,6 +69,7 @@ Close.Text = "X"
 Close.TextColor3 = Color3.fromRGB(255, 255, 255)
 Close.TextSize = 13
 Close.Font = Enum.Font.GothamBold
+Close.ZIndex = 1000
 Close.Parent = Main
 
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
@@ -70,6 +82,7 @@ Toggle.Text = "Fly : OFF"
 Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 Toggle.TextSize = 15
 Toggle.Font = Enum.Font.GothamBold
+Toggle.ZIndex = 1000
 Toggle.Parent = Main
 
 Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 10)
@@ -84,6 +97,7 @@ SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 SpeedBox.TextSize = 14
 SpeedBox.Font = Enum.Font.Gotham
+SpeedBox.ZIndex = 1000
 SpeedBox.Parent = Main
 
 Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 10)
@@ -107,10 +121,15 @@ local function StopFly()
             hum.PlatformStand = false
         end
 
-        if hrp and hrp:FindFirstChild("FlyVelocity") then
-            hrp.FlyVelocity:Destroy()
+        if hrp then
+            local old = hrp:FindFirstChild("FlyVelocity")
+            if old then
+                old:Destroy()
+            end
         end
     end
+
+    FlyBV = nil
 end
 
 local function StartFly()
@@ -119,7 +138,9 @@ local function StartFly()
     local hum = char:WaitForChild("Humanoid")
 
     local old = hrp:FindFirstChild("FlyVelocity")
-    if old then old:Destroy() end
+    if old then
+        old:Destroy()
+    end
 
     FlyBV = Instance.new("BodyVelocity")
     FlyBV.Name = "FlyVelocity"
@@ -179,6 +200,7 @@ end)
 
 SpeedBox.FocusLost:Connect(function()
     local value = tonumber(SpeedBox.Text)
+
     if value then
         FlySpeed = value
         SpeedBox.PlaceholderText = "Speed: " .. tostring(FlySpeed)
@@ -198,5 +220,6 @@ Close.MouseButton1Click:Connect(function()
 end)
 
 player.CharacterAdded:Connect(function()
+    task.wait(1)
     StopFly()
 end)
