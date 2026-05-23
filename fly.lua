@@ -34,8 +34,8 @@ Icon.ZIndex = 999
 Instance.new("UICorner", Icon).CornerRadius = UDim.new(1, 0)
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 180, 0, 150)
-Main.Position = UDim2.new(0, 70, 0.5, -75)
+Main.Size = UDim2.new(0, 180, 0, 225)
+Main.Position = UDim2.new(0, 70, 0.5, -110)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Main.Visible = false
 Main.Active = true
@@ -93,6 +93,32 @@ SpeedBox.Font = Enum.Font.Gotham
 SpeedBox.Parent = Main
 SpeedBox.ZIndex = 1000
 Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 10)
+
+local TPBox = Instance.new("TextBox")
+TPBox.Size = UDim2.new(1, -20, 0, 35)
+TPBox.Position = UDim2.new(0, 10, 0, 135)
+TPBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+TPBox.PlaceholderText = "Teleport Username"
+TPBox.Text = ""
+TPBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+TPBox.TextSize = 14
+TPBox.Font = Enum.Font.Gotham
+TPBox.Parent = Main
+TPBox.ZIndex = 1000
+Instance.new("UICorner", TPBox).CornerRadius = UDim.new(0, 10)
+
+local TPButton = Instance.new("TextButton")
+TPButton.Size = UDim2.new(1, -20, 0, 35)
+TPButton.Position = UDim2.new(0, 10, 0, 175)
+TPButton.BackgroundColor3 = Color3.fromRGB(70, 90, 180)
+TPButton.Text = "Teleport"
+TPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPButton.TextSize = 14
+TPButton.Font = Enum.Font.GothamBold
+TPButton.Parent = Main
+TPButton.ZIndex = 1000
+Instance.new("UICorner", TPButton).CornerRadius = UDim.new(0, 10)
 
 local function StopFly()
     Flying = false
@@ -198,7 +224,10 @@ local function StartFly()
 
         if move.Magnitude > 0 then
             BV.Velocity = move.Unit * FlySpeed
-            BG.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(move.X, move.Y * 0.35, move.Z))
+            BG.CFrame = CFrame.new(
+                hrp.Position,
+                hrp.Position + Vector3.new(move.X, move.Y * 0.35, move.Z)
+            )
         else
             BV.Velocity = Vector3.new(0, 2, 0)
             BG.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
@@ -224,6 +253,36 @@ SpeedBox.FocusLost:Connect(function()
     else
         SpeedBox.Text = ""
         SpeedBox.PlaceholderText = "Speed harus angka"
+    end
+end)
+
+TPButton.MouseButton1Click:Connect(function()
+    local targetName = TPBox.Text
+
+    if targetName == "" then
+        TPBox.PlaceholderText = "Masukkan username"
+        return
+    end
+
+    local targetPlayer = game.Players:FindFirstChild(targetName)
+
+    if targetPlayer
+    and targetPlayer.Character
+    and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+        local myChar = player.Character
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local targetHRP = targetPlayer.Character.HumanoidRootPart
+
+        if myHRP then
+            myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
+
+            TPBox.Text = ""
+            TPBox.PlaceholderText = "Berhasil teleport"
+        end
+    else
+        TPBox.Text = ""
+        TPBox.PlaceholderText = "Player tidak ditemukan"
     end
 end)
 
