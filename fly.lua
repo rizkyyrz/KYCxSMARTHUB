@@ -34,8 +34,8 @@ Icon.ZIndex = 999
 Instance.new("UICorner", Icon).CornerRadius = UDim.new(1, 0)
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 180, 0, 225)
-Main.Position = UDim2.new(0, 70, 0.5, -110)
+Main.Size = UDim2.new(0, 180, 0, 305)
+Main.Position = UDim2.new(0, 70, 0.5, -150)
 Main.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Main.Visible = false
 Main.Active = true
@@ -48,7 +48,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -35, 0, 35)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Mini Fly"
+Title.Text = "MiniHub by RZKY"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.GothamBold
@@ -119,6 +119,32 @@ TPButton.Font = Enum.Font.GothamBold
 TPButton.Parent = Main
 TPButton.ZIndex = 1000
 Instance.new("UICorner", TPButton).CornerRadius = UDim.new(0, 10)
+
+local SizeBox = Instance.new("TextBox")
+SizeBox.Size = UDim2.new(1, -20, 0, 35)
+SizeBox.Position = UDim2.new(0, 10, 0, 215)
+SizeBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+SizeBox.PlaceholderText = "Body Size: 1 - 5"
+SizeBox.Text = ""
+SizeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SizeBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+SizeBox.TextSize = 14
+SizeBox.Font = Enum.Font.Gotham
+SizeBox.Parent = Main
+SizeBox.ZIndex = 1000
+Instance.new("UICorner", SizeBox).CornerRadius = UDim.new(0, 10)
+
+local SizeButton = Instance.new("TextButton")
+SizeButton.Size = UDim2.new(1, -20, 0, 35)
+SizeButton.Position = UDim2.new(0, 10, 0, 255)
+SizeButton.BackgroundColor3 = Color3.fromRGB(120, 80, 180)
+SizeButton.Text = "Apply Body Size"
+SizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SizeButton.TextSize = 14
+SizeButton.Font = Enum.Font.GothamBold
+SizeButton.Parent = Main
+SizeButton.ZIndex = 1000
+Instance.new("UICorner", SizeButton).CornerRadius = UDim.new(0, 10)
 
 local function StopFly()
     Flying = false
@@ -235,6 +261,29 @@ local function StartFly()
     end)
 end
 
+local function SetBodySize(scale)
+    local char = player.Character
+    if not char then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    local scaleNames = {
+        "BodyHeightScale",
+        "BodyWidthScale",
+        "BodyDepthScale",
+        "HeadScale"
+    }
+
+    for _, scaleName in ipairs(scaleNames) do
+        local scaleValue = hum:FindFirstChild(scaleName)
+
+        if scaleValue then
+            scaleValue.Value = scale
+        end
+    end
+end
+
 Toggle.MouseButton1Click:Connect(function()
     if Flying then
         StopFly()
@@ -283,6 +332,21 @@ TPButton.MouseButton1Click:Connect(function()
     else
         TPBox.Text = ""
         TPBox.PlaceholderText = "Player tidak ditemukan"
+    end
+end)
+
+SizeButton.MouseButton1Click:Connect(function()
+    local value = tonumber(SizeBox.Text)
+
+    if value then
+        value = math.clamp(value, 0.5, 5)
+        SetBodySize(value)
+
+        SizeBox.Text = ""
+        SizeBox.PlaceholderText = "Body Size: " .. tostring(value)
+    else
+        SizeBox.Text = ""
+        SizeBox.PlaceholderText = "Masukkan angka"
     end
 end)
 
