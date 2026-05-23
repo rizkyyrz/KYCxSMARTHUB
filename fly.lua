@@ -48,7 +48,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -35, 0, 35)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MiniHub by RZKY"
+Title.Text = "Mini Hub"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.GothamBold
@@ -120,31 +120,31 @@ TPButton.Parent = Main
 TPButton.ZIndex = 1000
 Instance.new("UICorner", TPButton).CornerRadius = UDim.new(0, 10)
 
-local SizeBox = Instance.new("TextBox")
-SizeBox.Size = UDim2.new(1, -20, 0, 35)
-SizeBox.Position = UDim2.new(0, 10, 0, 215)
-SizeBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-SizeBox.PlaceholderText = "Body Size: 1 - 5"
-SizeBox.Text = ""
-SizeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-SizeBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
-SizeBox.TextSize = 14
-SizeBox.Font = Enum.Font.Gotham
-SizeBox.Parent = Main
-SizeBox.ZIndex = 1000
-Instance.new("UICorner", SizeBox).CornerRadius = UDim.new(0, 10)
+local CopyBox = Instance.new("TextBox")
+CopyBox.Size = UDim2.new(1, -20, 0, 35)
+CopyBox.Position = UDim2.new(0, 10, 0, 215)
+CopyBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+CopyBox.PlaceholderText = "Copy Avatar Username"
+CopyBox.Text = ""
+CopyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+CopyBox.TextSize = 14
+CopyBox.Font = Enum.Font.Gotham
+CopyBox.Parent = Main
+CopyBox.ZIndex = 1000
+Instance.new("UICorner", CopyBox).CornerRadius = UDim.new(0, 10)
 
-local SizeButton = Instance.new("TextButton")
-SizeButton.Size = UDim2.new(1, -20, 0, 35)
-SizeButton.Position = UDim2.new(0, 10, 0, 255)
-SizeButton.BackgroundColor3 = Color3.fromRGB(120, 80, 180)
-SizeButton.Text = "Apply Body Size"
-SizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SizeButton.TextSize = 14
-SizeButton.Font = Enum.Font.GothamBold
-SizeButton.Parent = Main
-SizeButton.ZIndex = 1000
-Instance.new("UICorner", SizeButton).CornerRadius = UDim.new(0, 10)
+local CopyButton = Instance.new("TextButton")
+CopyButton.Size = UDim2.new(1, -20, 0, 35)
+CopyButton.Position = UDim2.new(0, 10, 0, 255)
+CopyButton.BackgroundColor3 = Color3.fromRGB(200, 120, 60)
+CopyButton.Text = "Copy Avatar"
+CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyButton.TextSize = 14
+CopyButton.Font = Enum.Font.GothamBold
+CopyButton.Parent = Main
+CopyButton.ZIndex = 1000
+Instance.new("UICorner", CopyButton).CornerRadius = UDim.new(0, 10)
 
 local function StopFly()
     Flying = false
@@ -227,23 +227,18 @@ local function StartFly()
         if UIS:IsKeyDown(Enum.KeyCode.W) then
             move = move + forward
         end
-
         if UIS:IsKeyDown(Enum.KeyCode.S) then
             move = move - forward
         end
-
         if UIS:IsKeyDown(Enum.KeyCode.A) then
             move = move - right
         end
-
         if UIS:IsKeyDown(Enum.KeyCode.D) then
             move = move + right
         end
-
         if UIS:IsKeyDown(Enum.KeyCode.Space) then
             move = move + Vector3.new(0, 1, 0)
         end
-
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
             move = move - Vector3.new(0, 1, 0)
         end
@@ -261,27 +256,65 @@ local function StartFly()
     end)
 end
 
-local function SetBodySize(scale)
-    local char = player.Character
-    if not char then return end
+local function CopyAvatar(targetPlayer)
+    local targetChar = targetPlayer.Character
+    local myChar = player.Character
 
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    if not targetChar or not myChar then
+        return false
+    end
 
-    local scaleNames = {
-        "BodyHeightScale",
-        "BodyWidthScale",
-        "BodyDepthScale",
-        "HeadScale"
-    }
-
-    for _, scaleName in ipairs(scaleNames) do
-        local scaleValue = hum:FindFirstChild(scaleName)
-
-        if scaleValue then
-            scaleValue.Value = scale
+    for _, v in pairs(myChar:GetChildren()) do
+        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+            v:Destroy()
         end
     end
+
+    for _, v in pairs(targetChar:GetChildren()) do
+        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+            local clone = v:Clone()
+            clone.Parent = myChar
+        end
+    end
+
+    local myColors = myChar:FindFirstChild("BodyColors")
+    if myColors then
+        myColors:Destroy()
+    end
+
+    local targetColors = targetChar:FindFirstChild("BodyColors")
+    if targetColors then
+        targetColors:Clone().Parent = myChar
+    end
+
+    local targetHead = targetChar:FindFirstChild("Head")
+    local myHead = myChar:FindFirstChild("Head")
+
+    if targetHead and myHead then
+        local targetFace = targetHead:FindFirstChildOfClass("Decal")
+        local myFace = myHead:FindFirstChildOfClass("Decal")
+
+        if myFace then
+            myFace:Destroy()
+        end
+
+        if targetFace then
+            targetFace:Clone().Parent = myHead
+        end
+    end
+
+    local targetAnimate = targetChar:FindFirstChild("Animate")
+    local myAnimate = myChar:FindFirstChild("Animate")
+
+    if myAnimate then
+        myAnimate:Destroy()
+    end
+
+    if targetAnimate then
+        targetAnimate:Clone().Parent = myChar
+    end
+
+    return true
 end
 
 Toggle.MouseButton1Click:Connect(function()
@@ -335,18 +368,29 @@ TPButton.MouseButton1Click:Connect(function()
     end
 end)
 
-SizeButton.MouseButton1Click:Connect(function()
-    local value = tonumber(SizeBox.Text)
+CopyButton.MouseButton1Click:Connect(function()
+    local targetName = CopyBox.Text
 
-    if value then
-        value = math.clamp(value, 0.5, 5)
-        SetBodySize(value)
+    if targetName == "" then
+        CopyBox.PlaceholderText = "Masukkan username"
+        return
+    end
 
-        SizeBox.Text = ""
-        SizeBox.PlaceholderText = "Body Size: " .. tostring(value)
+    local targetPlayer = game.Players:FindFirstChild(targetName)
+
+    if targetPlayer then
+        local success = CopyAvatar(targetPlayer)
+
+        CopyBox.Text = ""
+
+        if success then
+            CopyBox.PlaceholderText = "Avatar copied"
+        else
+            CopyBox.PlaceholderText = "Character belum ready"
+        end
     else
-        SizeBox.Text = ""
-        SizeBox.PlaceholderText = "Masukkan angka"
+        CopyBox.Text = ""
+        CopyBox.PlaceholderText = "Player tidak ditemukan"
     end
 end)
 
