@@ -9,6 +9,7 @@ local Flying = false
 local FlyConnection
 local BV
 local BG
+local DefaultGravity = workspace.Gravity
 
 local oldGui = player.PlayerGui:FindFirstChild("MiniFlyGui")
 if oldGui then oldGui:Destroy() end
@@ -150,6 +151,7 @@ local function StopFly()
     Flying = false
     Toggle.Text = "Fly : OFF"
     Toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    workspace.Gravity = DefaultGravity
 
     if FlyConnection then
         FlyConnection:Disconnect()
@@ -168,9 +170,8 @@ local function StopFly()
         end
 
         if hrp then
-            local oldBV = hrp:FindFirstChild("FlyVelocity")
-            local oldBG = hrp:FindFirstChild("FlyGyro")
-
+            local oldBV = hrp:FindFirstChild("FlightVelocity")
+            local oldBG = hrp:FindFirstChild("ToolGyro")
             if oldBV then oldBV:Destroy() end
             if oldBG then oldBG:Destroy() end
         end
@@ -185,28 +186,30 @@ local function StartFly()
     local hrp = char:WaitForChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
 
-    local oldBV = hrp:FindFirstChild("FlyVelocity")
-    local oldBG = hrp:FindFirstChild("FlyGyro")
-
+    local oldBV = hrp:FindFirstChild("FlightVelocity")
+    local oldBG = hrp:FindFirstChild("ToolGyro")
     if oldBV then oldBV:Destroy() end
     if oldBG then oldBG:Destroy() end
 
     BV = Instance.new("BodyVelocity")
-    BV.Name = "FlyVelocity"
+    BV.Name = "FlightVelocity"
     BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    BV.Velocity = Vector3.new(0, 0, 0)
+    BV.Velocity = Vector3.zero
     BV.Parent = hrp
 
     BG = Instance.new("BodyGyro")
-    BG.Name = "FlyGyro"
+    BG.Name = "ToolGyro"
     BG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    BG.P = 9000
+    BG.P = 5000
+    BG.D = 100
     BG.CFrame = hrp.CFrame
     BG.Parent = hrp
 
     Flying = true
     Toggle.Text = "Fly : ON"
     Toggle.BackgroundColor3 = Color3.fromRGB(60, 160, 90)
+
+    workspace.Gravity = 50
 
     FlyConnection = RunService.RenderStepped:Connect(function()
         if not Flying or not hrp.Parent then
@@ -215,31 +218,43 @@ local function StartFly()
         end
 
         local cam = workspace.CurrentCamera
-        local move = Vector3.new(0, 0, 0)
+        local move = Vector3.zero
 
         hum.PlatformStand = false
         hum.AutoRotate = false
-        hum:ChangeState(Enum.HumanoidStateType.Freefall)
 
-        local forward = cam.CFrame.LookVector
-        local right = cam.CFrame.RightVector
-
-        if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + forward end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - forward end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - right end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + right end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
 
         if move.Magnitude > 0 then
-            BV.Velocity = move.Unit * FlySpeed
-            BG.CFrame = CFrame.new(
-                hrp.Position,
-                hrp.Position + Vector3.new(move.X, move.Y * 0.35, move.Z)
-            )
+            move = move.Unit
+
+            BV.Velocity = BV.Velocity:Lerp(move * FlySpeed, 0.18)
+
+            local flatMove = Vector3.new(move.X, 0, move.Z)
+
+            if flatMove.Magnitude > 0 then
+                BG.CFrame = BG.CFrame:Lerp(
+                    CFrame.lookAt(hrp.Position, hrp.Position + flatMove),
+                    0.2
+                )
+            else
+                BG.CFrame = BG.CFrame:Lerp(
+                    CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector),
+                    0.15
+                )
+            end
         else
-            BV.Velocity = Vector3.new(0, 0, 0)
-            BG.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
+            BV.Velocity = BV.Velocity:Lerp(Vector3.zero, 0.12)
+
+            BG.CFrame = BG.CFrame:Lerp(
+                CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector),
+                0.15
+            )
         end
     end)
 end
@@ -248,16 +263,12 @@ local function CopyAvatar(targetPlayer)
     local targetChar = targetPlayer.Character
     local myChar = player.Character
 
-    if not targetChar or not myChar then
-        return false
-    end
+    if not targetChar or not myChar then return false end
 
     local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
     local myHum = myChar:FindFirstChildOfClass("Humanoid")
 
-    if not targetHum or not myHum then
-        return false
-    end
+    if not targetHum or not myHum then return false end
 
     pcall(function()
         local desc = targetHum:GetAppliedDescription()
@@ -282,8 +293,7 @@ local function CopyAvatar(targetPlayer)
         or v:IsA("Pants")
         or v:IsA("ShirtGraphic")
         or v:IsA("BodyColors") then
-            local clone = v:Clone()
-            clone.Parent = myChar
+            v:Clone().Parent = myChar
         end
     end
 
@@ -302,88 +312,6 @@ local function CopyAvatar(targetPlayer)
                 v:Clone().Parent = myHead
             end
         end
-    end
-
-    local bodyParts = {
-        "Head",
-        "Torso",
-        "UpperTorso",
-        "LowerTorso",
-        "Left Arm",
-        "Right Arm",
-        "Left Leg",
-        "Right Leg",
-        "LeftUpperArm",
-        "LeftLowerArm",
-        "LeftHand",
-        "RightUpperArm",
-        "RightLowerArm",
-        "RightHand",
-        "LeftUpperLeg",
-        "LeftLowerLeg",
-        "LeftFoot",
-        "RightUpperLeg",
-        "RightLowerLeg",
-        "RightFoot"
-    }
-
-    for _, partName in ipairs(bodyParts) do
-        local targetPart = targetChar:FindFirstChild(partName)
-        local myPart = myChar:FindFirstChild(partName)
-
-        if targetPart and myPart and targetPart:IsA("BasePart") and myPart:IsA("BasePart") then
-            pcall(function()
-                myPart.Size = targetPart.Size
-                myPart.Color = targetPart.Color
-                myPart.Material = targetPart.Material
-                myPart.Transparency = targetPart.Transparency
-            end)
-
-            for _, old in ipairs(myPart:GetChildren()) do
-                if old:IsA("SpecialMesh")
-                or old:IsA("BlockMesh")
-                or old:IsA("CylinderMesh") then
-                    old:Destroy()
-                end
-            end
-
-            for _, mesh in ipairs(targetPart:GetChildren()) do
-                if mesh:IsA("SpecialMesh")
-                or mesh:IsA("BlockMesh")
-                or mesh:IsA("CylinderMesh") then
-                    mesh:Clone().Parent = myPart
-                end
-            end
-        end
-    end
-
-    local scaleValues = {
-        "BodyHeightScale",
-        "BodyWidthScale",
-        "BodyDepthScale",
-        "HeadScale"
-    }
-
-    for _, name in ipairs(scaleValues) do
-        local targetScale = targetHum:FindFirstChild(name)
-        local myScale = myHum:FindFirstChild(name)
-
-        if targetScale and myScale then
-            pcall(function()
-                myScale.Value = targetScale.Value
-            end)
-        end
-    end
-
-    local targetAnimate = targetChar:FindFirstChild("Animate")
-    local myAnimate = myChar:FindFirstChild("Animate")
-
-    if myAnimate then
-        myAnimate:Destroy()
-    end
-
-    if targetAnimate then
-        targetAnimate:Clone().Parent = myChar
     end
 
     return true
@@ -430,7 +358,6 @@ TPButton.MouseButton1Click:Connect(function()
 
         if myHRP then
             myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
-
             TPBox.Text = ""
             TPBox.PlaceholderText = "Berhasil teleport"
         end
