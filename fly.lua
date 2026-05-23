@@ -55,7 +55,6 @@ Title.TextSize = 16
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Main
-Title.ZIndex = 1000
 
 local Close = Instance.new("TextButton")
 Close.Size = UDim2.new(0, 25, 0, 25)
@@ -66,7 +65,6 @@ Close.TextColor3 = Color3.fromRGB(255, 255, 255)
 Close.TextSize = 13
 Close.Font = Enum.Font.GothamBold
 Close.Parent = Main
-Close.ZIndex = 1000
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
 
 local Toggle = Instance.new("TextButton")
@@ -78,7 +76,6 @@ Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 Toggle.TextSize = 15
 Toggle.Font = Enum.Font.GothamBold
 Toggle.Parent = Main
-Toggle.ZIndex = 1000
 Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 10)
 
 local SpeedBox = Instance.new("TextBox")
@@ -92,7 +89,6 @@ SpeedBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 SpeedBox.TextSize = 14
 SpeedBox.Font = Enum.Font.Gotham
 SpeedBox.Parent = Main
-SpeedBox.ZIndex = 1000
 Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 10)
 
 local TPBox = Instance.new("TextBox")
@@ -106,7 +102,6 @@ TPBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 TPBox.TextSize = 14
 TPBox.Font = Enum.Font.Gotham
 TPBox.Parent = Main
-TPBox.ZIndex = 1000
 Instance.new("UICorner", TPBox).CornerRadius = UDim.new(0, 10)
 
 local TPButton = Instance.new("TextButton")
@@ -118,34 +113,31 @@ TPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 TPButton.TextSize = 14
 TPButton.Font = Enum.Font.GothamBold
 TPButton.Parent = Main
-TPButton.ZIndex = 1000
 Instance.new("UICorner", TPButton).CornerRadius = UDim.new(0, 10)
 
-local CopyBox = Instance.new("TextBox")
-CopyBox.Size = UDim2.new(1, -20, 0, 35)
-CopyBox.Position = UDim2.new(0, 10, 0, 215)
-CopyBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-CopyBox.PlaceholderText = "Copy Avatar Username"
-CopyBox.Text = ""
-CopyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
-CopyBox.TextSize = 14
-CopyBox.Font = Enum.Font.Gotham
-CopyBox.Parent = Main
-CopyBox.ZIndex = 1000
-Instance.new("UICorner", CopyBox).CornerRadius = UDim.new(0, 10)
+local MorphBox = Instance.new("TextBox")
+MorphBox.Size = UDim2.new(1, -20, 0, 35)
+MorphBox.Position = UDim2.new(0, 10, 0, 215)
+MorphBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+MorphBox.PlaceholderText = "Morph Name"
+MorphBox.Text = ""
+MorphBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+MorphBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+MorphBox.TextSize = 14
+MorphBox.Font = Enum.Font.Gotham
+MorphBox.Parent = Main
+Instance.new("UICorner", MorphBox).CornerRadius = UDim.new(0, 10)
 
-local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(1, -20, 0, 35)
-CopyButton.Position = UDim2.new(0, 10, 0, 255)
-CopyButton.BackgroundColor3 = Color3.fromRGB(200, 120, 60)
-CopyButton.Text = "Copy Avatar"
-CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.TextSize = 14
-CopyButton.Font = Enum.Font.GothamBold
-CopyButton.Parent = Main
-CopyButton.ZIndex = 1000
-Instance.new("UICorner", CopyButton).CornerRadius = UDim.new(0, 10)
+local MorphButton = Instance.new("TextButton")
+MorphButton.Size = UDim2.new(1, -20, 0, 35)
+MorphButton.Position = UDim2.new(0, 10, 0, 255)
+MorphButton.BackgroundColor3 = Color3.fromRGB(140, 70, 180)
+MorphButton.Text = "Morph Monster"
+MorphButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MorphButton.TextSize = 14
+MorphButton.Font = Enum.Font.GothamBold
+MorphButton.Parent = Main
+Instance.new("UICorner", MorphButton).CornerRadius = UDim.new(0, 10)
 
 local function StopFly()
     Flying = false
@@ -208,7 +200,6 @@ local function StartFly()
     Flying = true
     Toggle.Text = "Fly : ON"
     Toggle.BackgroundColor3 = Color3.fromRGB(60, 160, 90)
-
     workspace.Gravity = 50
 
     FlyConnection = RunService.RenderStepped:Connect(function()
@@ -232,7 +223,6 @@ local function StartFly()
 
         if move.Magnitude > 0 then
             move = move.Unit
-
             BV.Velocity = BV.Velocity:Lerp(move * FlySpeed, 0.18)
 
             local flatMove = Vector3.new(move.X, 0, move.Z)
@@ -242,79 +232,15 @@ local function StartFly()
                     CFrame.lookAt(hrp.Position, hrp.Position + flatMove),
                     0.2
                 )
-            else
-                BG.CFrame = BG.CFrame:Lerp(
-                    CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector),
-                    0.15
-                )
             end
         else
             BV.Velocity = BV.Velocity:Lerp(Vector3.zero, 0.12)
-
             BG.CFrame = BG.CFrame:Lerp(
                 CFrame.lookAt(hrp.Position, hrp.Position + cam.CFrame.LookVector),
                 0.15
             )
         end
     end)
-end
-
-local function CopyAvatar(targetPlayer)
-    local targetChar = targetPlayer.Character
-    local myChar = player.Character
-
-    if not targetChar or not myChar then return false end
-
-    local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
-    local myHum = myChar:FindFirstChildOfClass("Humanoid")
-
-    if not targetHum or not myHum then return false end
-
-    pcall(function()
-        local desc = targetHum:GetAppliedDescription()
-        myHum:ApplyDescription(desc)
-    end)
-
-    task.wait(0.4)
-
-    for _, v in ipairs(myChar:GetChildren()) do
-        if v:IsA("Accessory")
-        or v:IsA("Shirt")
-        or v:IsA("Pants")
-        or v:IsA("ShirtGraphic")
-        or v:IsA("BodyColors") then
-            v:Destroy()
-        end
-    end
-
-    for _, v in ipairs(targetChar:GetChildren()) do
-        if v:IsA("Accessory")
-        or v:IsA("Shirt")
-        or v:IsA("Pants")
-        or v:IsA("ShirtGraphic")
-        or v:IsA("BodyColors") then
-            v:Clone().Parent = myChar
-        end
-    end
-
-    local targetHead = targetChar:FindFirstChild("Head")
-    local myHead = myChar:FindFirstChild("Head")
-
-    if targetHead and myHead then
-        for _, v in ipairs(myHead:GetChildren()) do
-            if v:IsA("Decal") or v:IsA("SpecialMesh") then
-                v:Destroy()
-            end
-        end
-
-        for _, v in ipairs(targetHead:GetChildren()) do
-            if v:IsA("Decal") or v:IsA("SpecialMesh") then
-                v:Clone().Parent = myHead
-            end
-        end
-    end
-
-    return true
 end
 
 Toggle.MouseButton1Click:Connect(function()
@@ -367,29 +293,25 @@ TPButton.MouseButton1Click:Connect(function()
     end
 end)
 
-CopyButton.MouseButton1Click:Connect(function()
-    local targetName = CopyBox.Text
+MorphButton.MouseButton1Click:Connect(function()
+    local morphName = MorphBox.Text
 
-    if targetName == "" then
-        CopyBox.PlaceholderText = "Masukkan username"
+    if morphName == "" then
+        MorphBox.PlaceholderText = "Masukkan morph"
         return
     end
 
-    local targetPlayer = game.Players:FindFirstChild(targetName)
+    local success, err = pcall(function()
+        require(88521859208314).MorphMonster(player.Name, morphName)
+    end)
 
-    if targetPlayer then
-        local success = CopyAvatar(targetPlayer)
+    MorphBox.Text = ""
 
-        CopyBox.Text = ""
-
-        if success then
-            CopyBox.PlaceholderText = "Avatar copied"
-        else
-            CopyBox.PlaceholderText = "Character belum ready"
-        end
+    if success then
+        MorphBox.PlaceholderText = "Morph success"
     else
-        CopyBox.Text = ""
-        CopyBox.PlaceholderText = "Player tidak ditemukan"
+        MorphBox.PlaceholderText = "Morph failed"
+        warn(err)
     end
 end)
 
