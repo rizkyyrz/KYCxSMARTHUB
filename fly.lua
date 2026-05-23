@@ -229,7 +229,7 @@ local function StartFly()
                 hrp.Position + Vector3.new(move.X, move.Y * 0.35, move.Z)
             )
         else
-            BV.Velocity = Vector3.new(0, 2, 0)
+            BV.Velocity = Vector3.new(0, -1, 0)
             BG.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
         end
     end)
