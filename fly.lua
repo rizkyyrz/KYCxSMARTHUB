@@ -224,24 +224,12 @@ local function StartFly()
         local forward = cam.CFrame.LookVector
         local right = cam.CFrame.RightVector
 
-        if UIS:IsKeyDown(Enum.KeyCode.W) then
-            move = move + forward
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then
-            move = move - forward
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then
-            move = move - right
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then
-            move = move + right
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then
-            move = move + Vector3.new(0, 1, 0)
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-            move = move - Vector3.new(0, 1, 0)
-        end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + forward end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - forward end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - right end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + right end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.new(0, 1, 0) end
 
         if move.Magnitude > 0 then
             BV.Velocity = move.Unit * FlySpeed
@@ -264,42 +252,126 @@ local function CopyAvatar(targetPlayer)
         return false
     end
 
-    for _, v in pairs(myChar:GetChildren()) do
-        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+    local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+
+    if not targetHum or not myHum then
+        return false
+    end
+
+    pcall(function()
+        local desc = targetHum:GetAppliedDescription()
+        myHum:ApplyDescription(desc)
+    end)
+
+    task.wait(0.4)
+
+    for _, v in ipairs(myChar:GetChildren()) do
+        if v:IsA("Accessory")
+        or v:IsA("Shirt")
+        or v:IsA("Pants")
+        or v:IsA("ShirtGraphic")
+        or v:IsA("BodyColors") then
             v:Destroy()
         end
     end
 
-    for _, v in pairs(targetChar:GetChildren()) do
-        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+    for _, v in ipairs(targetChar:GetChildren()) do
+        if v:IsA("Accessory")
+        or v:IsA("Shirt")
+        or v:IsA("Pants")
+        or v:IsA("ShirtGraphic")
+        or v:IsA("BodyColors") then
             local clone = v:Clone()
             clone.Parent = myChar
         end
-    end
-
-    local myColors = myChar:FindFirstChild("BodyColors")
-    if myColors then
-        myColors:Destroy()
-    end
-
-    local targetColors = targetChar:FindFirstChild("BodyColors")
-    if targetColors then
-        targetColors:Clone().Parent = myChar
     end
 
     local targetHead = targetChar:FindFirstChild("Head")
     local myHead = myChar:FindFirstChild("Head")
 
     if targetHead and myHead then
-        local targetFace = targetHead:FindFirstChildOfClass("Decal")
-        local myFace = myHead:FindFirstChildOfClass("Decal")
-
-        if myFace then
-            myFace:Destroy()
+        for _, v in ipairs(myHead:GetChildren()) do
+            if v:IsA("Decal") or v:IsA("SpecialMesh") then
+                v:Destroy()
+            end
         end
 
-        if targetFace then
-            targetFace:Clone().Parent = myHead
+        for _, v in ipairs(targetHead:GetChildren()) do
+            if v:IsA("Decal") or v:IsA("SpecialMesh") then
+                v:Clone().Parent = myHead
+            end
+        end
+    end
+
+    local bodyParts = {
+        "Head",
+        "Torso",
+        "UpperTorso",
+        "LowerTorso",
+        "Left Arm",
+        "Right Arm",
+        "Left Leg",
+        "Right Leg",
+        "LeftUpperArm",
+        "LeftLowerArm",
+        "LeftHand",
+        "RightUpperArm",
+        "RightLowerArm",
+        "RightHand",
+        "LeftUpperLeg",
+        "LeftLowerLeg",
+        "LeftFoot",
+        "RightUpperLeg",
+        "RightLowerLeg",
+        "RightFoot"
+    }
+
+    for _, partName in ipairs(bodyParts) do
+        local targetPart = targetChar:FindFirstChild(partName)
+        local myPart = myChar:FindFirstChild(partName)
+
+        if targetPart and myPart and targetPart:IsA("BasePart") and myPart:IsA("BasePart") then
+            pcall(function()
+                myPart.Size = targetPart.Size
+                myPart.Color = targetPart.Color
+                myPart.Material = targetPart.Material
+                myPart.Transparency = targetPart.Transparency
+            end)
+
+            for _, old in ipairs(myPart:GetChildren()) do
+                if old:IsA("SpecialMesh")
+                or old:IsA("BlockMesh")
+                or old:IsA("CylinderMesh") then
+                    old:Destroy()
+                end
+            end
+
+            for _, mesh in ipairs(targetPart:GetChildren()) do
+                if mesh:IsA("SpecialMesh")
+                or mesh:IsA("BlockMesh")
+                or mesh:IsA("CylinderMesh") then
+                    mesh:Clone().Parent = myPart
+                end
+            end
+        end
+    end
+
+    local scaleValues = {
+        "BodyHeightScale",
+        "BodyWidthScale",
+        "BodyDepthScale",
+        "HeadScale"
+    }
+
+    for _, name in ipairs(scaleValues) do
+        local targetScale = targetHum:FindFirstChild(name)
+        local myScale = myHum:FindFirstChild(name)
+
+        if targetScale and myScale then
+            pcall(function()
+                myScale.Value = targetScale.Value
+            end)
         end
     end
 
