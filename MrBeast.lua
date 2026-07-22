@@ -1,293 +1,801 @@
--- ============================================
--- ROBLOX HUB LOADER TANPA KEY SYSTEM
--- ============================================
+--[[
+    Wonder Hub - Escape from Mr. Island Beast
+    Hasil deobfuscation dan perapian.
+    (Versi tanpa validasi flag otorisasi)
+]]
 
-local Config = {
-    HubName = "Plato Hub V2",
-    HubDescription = "Best Roblox Script Hub",
+-- =========================================================
+-- UI LIBRARY
+-- =========================================================
 
-    MainGuiName = "MainGui",
-    LoaderGuiName = "PlatoHubLoader",
-    OldGuiName = "OldGui",
-    LoadedFlag = "Plato_Loaded",
+local Fluent = loadstring(game:HttpGet(
+    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+))()
 
-    MainScriptURL = "https://pastebin.com/raw/xxxxxxxx",
+local Window = Fluent:CreateWindow({
+    Title = "Escape from Mr. Island Beast",
+    SubTitle = "WONDER",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "White",
+    MinimizeKey = Enum.KeyCode.LeftAlt
+})
 
-    ShowDiscord = true,
-    ShowInstagram = true,
-    ShowYoutube = true,
+local Tabs = {
+    Farm = Window:AddTab({
+        Title = "Farm",
+        Icon = "axe"
+    }),
 
-    DiscordURL = "https://discord.gg/xxxxxx",
-    InstagramURL = "https://instagram.com/xxxxxx",
-    YoutubeURL = "https://youtube.com/xxxxxx",
+    Combat = Window:AddTab({
+        Title = "Combat",
+        Icon = "sword"
+    }),
 
-    DiscordIcon = "rbxassetid://123456789",
-    InstagramIcon = "rbxassetid://987654321",
-    YoutubeIcon = "rbxassetid://123456789"
+    Quests = Window:AddTab({
+        Title = "Quests",
+        Icon = "clipboard"
+    }),
+
+    Chests = Window:AddTab({
+        Title = "Chests",
+        Icon = "package"
+    }),
+
+    ESP = Window:AddTab({
+        Title = "Esp",
+        Icon = "eye"
+    }),
+
+    Settings = Window:AddTab({
+        Title = "Settings",
+        Icon = "settings"
+    })
 }
 
+-- =========================================================
+-- GAME REMOTES
+-- =========================================================
+
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
--- ============================================
--- FUNGSI UTILITY
--- ============================================
+local MeleeHitRemote = ReplicatedStorage
+    :WaitForChild("Events")
+    :WaitForChild("meleeHitRemote")
 
-local function safeSetClipboard(text)
-    if typeof(setclipboard) == "function" then
-        local success = pcall(setclipboard, text)
-        return success
+local CollectRemote = ReplicatedStorage
+    :WaitForChild("Engine")
+    :WaitForChild("Service")
+    :WaitForChild("ItemCollect")
+    :WaitForChild("collectRemote")
+
+-- =========================================================
+-- ITEM FILTERS
+-- =========================================================
+
+local ItemNames = {
+    Wood = {
+        "Log",
+        "Wood",
+        "Madeira",
+        "Trunk"
+    },
+
+    Coconut = {
+        "Coconut",
+        "Coco"
+    },
+
+    Egg = {
+        "Egg",
+        "Ovo"
+    },
+
+    Meat = {
+        "Meat",
+        "Carne"
+    },
+
+    Stone = {
+        "Stone",
+        "Rock",
+        "Pedra"
+    }
+}
+
+local Settings = {
+    AutoCutTree = false,
+    TreeRange = 15,
+
+    AutoCollectAll = false,
+    CollectWood = false,
+    CollectCoconut = false,
+    CollectEgg = false,
+    CollectMeat = false,
+    CollectStone = false,
+
+    AutoKill = false,
+    KillRange = 15,
+
+    AutoFarmChests = false,
+    ChestWaitTime = 3,
+
+    ESPEnabled = false
+}
+
+local function listContains(list, value)
+    for _, item in ipairs(list) do
+        if value == item then
+            return true
+        end
     end
 
     return false
 end
 
-local function loadMainScript()
-    if _G[Config.LoadedFlag] then
-        return false, "Hub sudah dimuat."
+local function shouldCollect(itemName)
+    if Settings.AutoCollectAll then
+        return true
     end
 
-    if playerGui:FindFirstChild(Config.OldGuiName) then
-        playerGui[Config.OldGuiName]:Destroy()
-        task.wait(0.1)
+    if Settings.CollectWood and listContains(ItemNames.Wood, itemName) then
+        return true
     end
 
-    local success, result = pcall(function()
-        local source = game:HttpGet(Config.MainScriptURL)
-
-        local compiled, compileError = loadstring(source)
-        if not compiled then
-            error("Gagal compile script: " .. tostring(compileError))
-        end
-
-        _G[Config.LoadedFlag] = true
-        compiled()
-    end)
-
-    if not success then
-        _G[Config.LoadedFlag] = nil
-        return false, tostring(result)
+    if Settings.CollectCoconut and listContains(ItemNames.Coconut, itemName) then
+        return true
     end
 
-    return true, "Hub berhasil dimuat."
+    if Settings.CollectEgg and listContains(ItemNames.Egg, itemName) then
+        return true
+    end
+
+    if Settings.CollectMeat and listContains(ItemNames.Meat, itemName) then
+        return true
+    end
+
+    if Settings.CollectStone and listContains(ItemNames.Stone, itemName) then
+        return true
+    end
+
+    return false
 end
 
--- ============================================
--- MEMBUAT GUI
--- ============================================
+local function getCharacter()
+    local character = LocalPlayer.Character
 
-local function createGUI()
-    local existingGui = playerGui:FindFirstChild(Config.LoaderGuiName)
-    if existingGui then
-        existingGui:Destroy()
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        return character
     end
 
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = Config.LoaderGuiName
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.Parent = playerGui
+    return nil
+end
 
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 340, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -170, 0.5, -150)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    mainFrame.Active = true
-    mainFrame.Draggable = true
-    mainFrame.Parent = screenGui
+local function getGameFolder(folderName)
+    local gameFolder = workspace:FindFirstChild("Game")
 
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 15)
-    mainCorner.Parent = mainFrame
-
-    local border = Instance.new("UIStroke")
-    border.Thickness = 2
-    border.Color = Color3.fromRGB(40, 40, 40)
-    border.Parent = mainFrame
-
-    local header = Instance.new("TextLabel")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    header.Text = Config.HubName
-    header.TextColor3 = Color3.fromRGB(0, 170, 255)
-    header.Font = Enum.Font.GothamBold
-    header.TextSize = 20
-    header.Parent = mainFrame
-
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 15)
-    headerCorner.Parent = header
-
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -38, 0, 10)
-    closeButton.BackgroundTransparency = 1
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.TextSize = 18
-    closeButton.ZIndex = 3
-    closeButton.Parent = mainFrame
-
-    closeButton.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
-
-    local description = Instance.new("TextLabel")
-    description.Name = "Description"
-    description.Size = UDim2.new(0.9, 0, 0, 40)
-    description.Position = UDim2.new(0.05, 0, 0, 55)
-    description.BackgroundTransparency = 1
-    description.Text = Config.HubDescription
-    description.TextColor3 = Color3.fromRGB(0, 170, 255)
-    description.Font = Enum.Font.GothamBold
-    description.TextSize = 14
-    description.TextWrapped = true
-    description.Parent = mainFrame
-
-    local yOffset = 100
-
-    local function createSocialButton(text, color, imageUrl, url)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.85, 0, 0, 35)
-        button.Position = UDim2.new(0.075, 0, 0, yOffset)
-        button.BackgroundColor3 = color
-        button.Text = text
-        button.TextColor3 = Color3.new(1, 1, 1)
-        button.Font = Enum.Font.GothamBold
-        button.TextSize = 14
-        button.Parent = mainFrame
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = button
-
-        local icon = Instance.new("ImageLabel")
-        icon.Size = UDim2.new(0, 20, 0, 20)
-        icon.Position = UDim2.new(0.08, 0, 0.5, -10)
-        icon.BackgroundTransparency = 1
-        icon.Image = imageUrl
-        icon.Parent = button
-
-        button.MouseButton1Click:Connect(function()
-            if safeSetClipboard(url) then
-                button.Text = "Copied!"
-            else
-                button.Text = "Clipboard tidak tersedia"
-            end
-
-            task.delay(1.5, function()
-                if button.Parent then
-                    button.Text = text
-                end
-            end)
-        end)
-
-        yOffset += 45
+    if not gameFolder then
+        return nil
     end
 
-    if Config.ShowDiscord then
-        createSocialButton(
-            "Copy Discord",
-            Color3.fromRGB(88, 101, 242),
-            Config.DiscordIcon,
-            Config.DiscordURL
-        )
-    end
+    return gameFolder:FindFirstChild(folderName)
+end
 
-    if Config.ShowInstagram then
-        createSocialButton(
-            "Copy Instagram",
-            Color3.fromRGB(225, 48, 108),
-            Config.InstagramIcon,
-            Config.InstagramURL
-        )
-    end
+-- =========================================================
+-- FARM: TREE CHOPPING
+-- =========================================================
 
-    if Config.ShowYoutube then
-        createSocialButton(
-            "Copy YouTube",
-            Color3.fromRGB(255, 0, 0),
-            Config.YoutubeIcon,
-            Config.YoutubeURL
-        )
-    end
+Tabs.Farm:AddParagraph({
+    Title = "Tree Chopping",
+    Content = "Stand near trees to chop them automatically."
+})
 
-    local loadButton = Instance.new("TextButton")
-    loadButton.Name = "LoadButton"
-    loadButton.Size = UDim2.new(0.85, 0, 0, 42)
-    loadButton.Position = UDim2.new(0.075, 0, 0, yOffset + 5)
-    loadButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    loadButton.Text = "Load Hub"
-    loadButton.TextColor3 = Color3.new(1, 1, 1)
-    loadButton.Font = Enum.Font.GothamBold
-    loadButton.TextSize = 15
-    loadButton.Parent = mainFrame
+Tabs.Farm:AddToggle("AutoCut", {
+    Title = "Auto Cut Trees",
+    Description = "Automatically hits nearby trees.",
+    Default = false,
 
-    local loadCorner = Instance.new("UICorner")
-    loadCorner.CornerRadius = UDim.new(0, 8)
-    loadCorner.Parent = loadButton
+    Callback = function(enabled)
+        Settings.AutoCutTree = enabled
 
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "Status"
-    statusLabel.Size = UDim2.new(0.9, 0, 0, 35)
-    statusLabel.Position = UDim2.new(0.05, 0, 0, yOffset + 52)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Tekan Load Hub untuk menjalankan script"
-    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 12
-    statusLabel.TextWrapped = true
-    statusLabel.Parent = mainFrame
-
-    mainFrame.Size = UDim2.new(0, 340, 0, yOffset + 100)
-    mainFrame.Position = UDim2.new(0.5, -170, 0.5, -(yOffset + 100) / 2)
-
-    local loading = false
-
-    loadButton.MouseButton1Click:Connect(function()
-        if loading then
+        if not enabled then
             return
         end
 
-        loading = true
-        loadButton.AutoButtonColor = false
-        loadButton.Text = "Loading..."
-        statusLabel.Text = "Mengambil dan menjalankan script..."
-        statusLabel.TextColor3 = Color3.fromRGB(255, 200, 70)
+        task.spawn(function()
+            while Settings.AutoCutTree do
+                task.wait(0.2)
 
-        local success, message = loadMainScript()
+                local staticFolder = getGameFolder("Static")
+                local character = getCharacter()
 
-        if success then
-            statusLabel.Text = message
-            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            loadButton.Text = "Loaded"
+                if staticFolder and character then
+                    for _, object in pairs(staticFolder:GetChildren()) do
+                        if object.Name == "Coconut Tree" or object.Name == "Tree" then
+                            local treePart = object:FindFirstChildWhichIsA(
+                                "BasePart",
+                                true
+                            )
 
-            task.wait(0.5)
+                            if treePart then
+                                local distance = (
+                                    character.HumanoidRootPart.Position -
+                                    treePart.Position
+                                ).Magnitude
 
-            if screenGui.Parent then
-                screenGui:Destroy()
+                                if distance <= Settings.TreeRange then
+                                    MeleeHitRemote:FireServer({}, {object})
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+})
+
+Tabs.Farm:AddSlider("TreeRange", {
+    Title = "Axe Range",
+    Default = 15,
+    Min = 5,
+    Max = 35,
+    Rounding = 0,
+
+    Callback = function(value)
+        Settings.TreeRange = value
+    end
+})
+
+-- =========================================================
+-- FARM: ITEM COLLECTION
+-- =========================================================
+
+Tabs.Farm:AddParagraph({
+    Title = "Ghost Collect",
+    Content = "Teleports super fast to get floor items."
+})
+
+Tabs.Farm:AddToggle("CollectAll", {
+    Title = "Collect ALL Items",
+    Description = "Picks up everything from the ground.",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.AutoCollectAll = enabled
+    end
+})
+
+Tabs.Farm:AddParagraph({
+    Title = "Item Filters",
+    Content = "Disable 'Collect ALL' to use specific filters."
+})
+
+Tabs.Farm:AddToggle("FilterWood", {
+    Title = "Collect Wood",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.CollectWood = enabled
+    end
+})
+
+Tabs.Farm:AddToggle("FilterCoco", {
+    Title = "Collect Coconuts",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.CollectCoconut = enabled
+    end
+})
+
+Tabs.Farm:AddToggle("FilterEgg", {
+    Title = "Collect Eggs",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.CollectEgg = enabled
+    end
+})
+
+Tabs.Farm:AddToggle("FilterMeat", {
+    Title = "Collect Meat",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.CollectMeat = enabled
+    end
+})
+
+Tabs.Farm:AddToggle("FilterStone", {
+    Title = "Collect Stone",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.CollectStone = enabled
+    end
+})
+
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+
+        local character = getCharacter()
+
+        local collectionEnabled =
+            Settings.AutoCollectAll or
+            Settings.CollectWood or
+            Settings.CollectCoconut or
+            Settings.CollectEgg or
+            Settings.CollectMeat or
+            Settings.CollectStone
+
+        if character and collectionEnabled then
+            local droppedItems = getGameFolder("DroppedItems")
+
+            if droppedItems then
+                for _, item in pairs(droppedItems:GetChildren()) do
+                    if item:IsA("Model") and shouldCollect(item.Name) then
+                        local itemPart = item:FindFirstChildWhichIsA(
+                            "BasePart",
+                            true
+                        )
+
+                        if itemPart then
+                            local oldCFrame =
+                                character.HumanoidRootPart.CFrame
+
+                            local camera = workspace.CurrentCamera
+
+                            camera.CameraType =
+                                Enum.CameraType.Scriptable
+
+                            character.HumanoidRootPart.CFrame =
+                                itemPart.CFrame
+
+                            task.wait(0.1)
+                            CollectRemote:FireServer(item)
+                            task.wait(0.1)
+
+                            character.HumanoidRootPart.CFrame =
+                                oldCFrame
+
+                            camera.CameraType =
+                                Enum.CameraType.Custom
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- =========================================================
+-- COMBAT
+-- =========================================================
+
+Tabs.Combat:AddToggle("AutoKill", {
+    Title = "Kill Aura Animals",
+    Description = "Automatically attacks nearby animals.",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.AutoKill = enabled
+
+        if not enabled then
+            return
+        end
+
+        task.spawn(function()
+            while Settings.AutoKill do
+                task.wait(0.2)
+
+                local entities = getGameFolder("Entities")
+                local character = getCharacter()
+
+                if entities and character then
+                    for _, entity in pairs(entities:GetChildren()) do
+                        local humanoid = entity:FindFirstChild("Humanoid")
+                        local rootPart =
+                            entity:FindFirstChild("HumanoidRootPart")
+
+                        if
+                            entity:IsA("Model") and
+                            humanoid and
+                            rootPart and
+                            humanoid.Health > 0
+                        then
+                            local distance = (
+                                character.HumanoidRootPart.Position -
+                                rootPart.Position
+                            ).Magnitude
+
+                            if distance <= Settings.KillRange then
+                                MeleeHitRemote:FireServer({entity}, {})
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+})
+
+Tabs.Combat:AddSlider("KillRange", {
+    Title = "Weapon Range",
+    Default = 15,
+    Min = 5,
+    Max = 35,
+    Rounding = 0,
+
+    Callback = function(value)
+        Settings.KillRange = value
+    end
+})
+
+-- =========================================================
+-- CHESTS
+-- =========================================================
+
+Tabs.Chests:AddToggle("AutoFarmChests", {
+    Title = "Auto Farm All Chests",
+    Description = "Teleports to chests one by one.",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.AutoFarmChests = enabled
+
+        if not enabled then
+            return
+        end
+
+        task.spawn(function()
+            local visitedChests = {}
+
+            while Settings.AutoFarmChests do
+                local chestFolder = getGameFolder("Chest")
+
+                if chestFolder then
+                    local chests = chestFolder:GetChildren()
+
+                    if #chests == 0 then
+                        visitedChests = {}
+                    end
+
+                    for _, chest in pairs(chests) do
+                        if not Settings.AutoFarmChests then
+                            break
+                        end
+
+                        if not visitedChests[chest] then
+                            local chestPart =
+                                chest:FindFirstChildWhichIsA(
+                                    "BasePart",
+                                    true
+                                )
+
+                            local character = getCharacter()
+
+                            if chestPart and character then
+                                character.HumanoidRootPart.CFrame =
+                                    chestPart.CFrame *
+                                    CFrame.new(0, 2, 0)
+
+                                visitedChests[chest] = true
+
+                                task.wait(Settings.ChestWaitTime)
+                            end
+                        end
+                    end
+                end
+
+                task.wait(1)
+            end
+        end)
+    end
+})
+
+Tabs.Chests:AddSlider("ChestDelay", {
+    Title = "Wait Time per Chest (Seconds)",
+    Default = 3,
+    Min = 1,
+    Max = 15,
+    Rounding = 2,
+
+    Callback = function(value)
+        Settings.ChestWaitTime = value
+    end
+})
+
+Tabs.Chests:AddParagraph({
+    Title = "Chest List",
+    Content =
+        "Loot Box Gold, Loot Box House, Loot Box Wild, " ..
+        "Loot box 02, Loot box 03"
+})
+
+-- =========================================================
+-- ENTITY ESP
+-- =========================================================
+
+local function removeESP()
+    local entities = getGameFolder("Entities")
+
+    if not entities then
+        return
+    end
+
+    for _, entity in pairs(entities:GetChildren()) do
+        local highlight = entity:FindFirstChild("ESPHighlight")
+
+        if highlight then
+            highlight:Destroy()
+        end
+    end
+end
+
+Tabs.ESP:AddToggle("ESPAnimals", {
+    Title = "Enable Entity ESP",
+    Description = "Shows a highlight around animals.",
+    Default = false,
+
+    Callback = function(enabled)
+        Settings.ESPEnabled = enabled
+
+        if not enabled then
+            removeESP()
+        end
+    end
+})
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+
+        if Settings.ESPEnabled then
+            local entities = getGameFolder("Entities")
+
+            if entities then
+                for _, entity in pairs(entities:GetChildren()) do
+                    if
+                        entity:IsA("Model") and
+                        not entity:FindFirstChild("ESPHighlight")
+                    then
+                        local highlight = Instance.new("Highlight")
+
+                        highlight.Name = "ESPHighlight"
+                        highlight.FillTransparency = 0.5
+                        highlight.OutlineTransparency = 0
+                        highlight.FillColor =
+                            Color3.fromRGB(255, 0, 0)
+
+                        highlight.OutlineColor =
+                            Color3.fromRGB(255, 255, 255)
+
+                        highlight.Parent = entity
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- =========================================================
+-- QUEST TELEPORTS
+-- =========================================================
+
+Tabs.Quests:AddParagraph({
+    Title = "Teleports",
+    Content = "Quick shortcuts to locations and quest items."
+})
+
+Tabs.Quests:AddButton({
+    Title = "🔥 TP to Campfire",
+    Description = "Teleports you to the nearest campfire.",
+
+    Callback = function()
+        local character = getCharacter()
+
+        if not character then
+            return
+        end
+
+        local campfire =
+            workspace:FindFirstChild("Campfire", true) or
+            workspace:FindFirstChild("Camp Fire", true) or
+            workspace:FindFirstChild("Fogueira", true)
+
+        if campfire then
+            local targetPart =
+                campfire:FindFirstChildWhichIsA("BasePart", true) or
+                campfire.PrimaryPart
+
+            if targetPart then
+                character.HumanoidRootPart.CFrame =
+                    targetPart.CFrame * CFrame.new(0, 3, 0)
+
+                Fluent:Notify({
+                    Title = "Success",
+                    Content = "Teleported to the campfire!",
+                    Duration = 3
+                })
             end
         else
-            statusLabel.Text = "Error: " .. message
-            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            loadButton.Text = "Coba Lagi"
-            loadButton.AutoButtonColor = true
-            loading = false
+            Fluent:Notify({
+                Title = "Error",
+                Content = "Campfire not found on the map.",
+                Duration = 4
+            })
         end
-    end)
+    end
+})
+
+local function teleportToMapObject(objectName)
+    local character = getCharacter()
+
+    if not character then
+        return
+    end
+
+    local tiles = getGameFolder("Tiles")
+
+    if not tiles then
+        return
+    end
+
+    local object = tiles:FindFirstChild(objectName, true)
+
+    if object and object:IsA("Model") then
+        local targetPart =
+            object:FindFirstChildWhichIsA("BasePart", true) or
+            object.PrimaryPart
+
+        if targetPart then
+            character.HumanoidRootPart.CFrame =
+                targetPart.CFrame * CFrame.new(0, 3, 0)
+
+            Fluent:Notify({
+                Title = "Success",
+                Content = "Teleported to " .. objectName .. "!",
+                Duration = 3
+            })
+        end
+    else
+        Fluent:Notify({
+            Title = "Error",
+            Content =
+                objectName ..
+                " not found. Wait for the map to generate it.",
+            Duration = 4
+        })
+    end
 end
 
--- ============================================
--- EKSEKUSI UTAMA
--- ============================================
+Tabs.Quests:AddButton({
+    Title = "🪣 TP to Plastic Bucket",
 
-if playerGui:FindFirstChild(Config.MainGuiName) or _G[Config.LoadedFlag] then
-    warn(Config.HubName .. " sudah dimuat.")
-else
-    createGUI()
+    Callback = function()
+        teleportToMapObject("Plastic Bucket")
+    end
+})
+
+Tabs.Quests:AddButton({
+    Title = "📻 TP to Radio",
+
+    Callback = function()
+        teleportToMapObject("Radio")
+    end
+})
+
+Tabs.Quests:AddButton({
+    Title = "🧭 TP to Compass",
+
+    Callback = function()
+        teleportToMapObject("Compass")
+    end
+})
+
+Tabs.Quests:AddButton({
+    Title = "🗺️ TP to Map",
+
+    Callback = function()
+        teleportToMapObject("Map")
+    end
+})
+
+-- =========================================================
+-- MOBILE MENU BUTTON
+-- =========================================================
+
+Tabs.Settings:AddParagraph({
+    Title = "Configuration",
+    Content =
+        "Menu Key: Alt\n" ..
+        "Mobile users can use the floating 'W' button " ..
+        "to toggle the menu."
+})
+
+local oldMobileUI = CoreGui:FindFirstChild("MobileButtonUI")
+
+if oldMobileUI then
+    oldMobileUI:Destroy()
 end
+
+local mobileGui = Instance.new("ScreenGui")
+mobileGui.Name = "MobileButtonUI"
+mobileGui.Parent = CoreGui
+
+local mobileButton = Instance.new("TextButton")
+mobileButton.Name = "Toggle"
+mobileButton.Parent = mobileGui
+mobileButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mobileButton.Position = UDim2.new(0.5, -25, 0.1, 0)
+mobileButton.Size = UDim2.new(0, 50, 0, 50)
+mobileButton.Font = Enum.Font.GothamBold
+mobileButton.Text = "W"
+mobileButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+mobileButton.TextSize = 20
+mobileButton.Active = true
+mobileButton.Draggable = true
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.Parent = mobileButton
+
+local buttonStroke = Instance.new("UIStroke")
+buttonStroke.Color = Color3.fromRGB(150, 150, 150)
+buttonStroke.Thickness = 1.5
+buttonStroke.Parent = mobileButton
+
+local fluentGui
+
+task.spawn(function()
+    while not fluentGui do
+        task.wait(0.5)
+
+        for _, gui in pairs(CoreGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                for _, descendant in pairs(gui:GetDescendants()) do
+                    if
+                        descendant:IsA("TextLabel") and
+                        string.find(
+                            descendant.Text,
+                            "Escape from Mr. Island Beast",
+                            1,
+                            true
+                        )
+                    then
+                        fluentGui = gui
+                        break
+                    end
+                end
+            end
+
+            if fluentGui then
+                break
+            end
+        end
+    end
+end)
+
+mobileButton.MouseButton1Click:Connect(function()
+    if not fluentGui then
+        return
+    end
+
+    for _, child in pairs(fluentGui:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("CanvasGroup") then
+            child.Visible = not child.Visible
+        end
+    end
+end)
+
+Fluent:Notify({
+    Title = "Script Loaded",
+    Content = "Mobile UI loaded! Movement is now free.",
+    Duration = 5
+})
