@@ -1,151 +1,3 @@
-ChatGPT Plus
-
-
-
-
-
-Teks yang ditempel (1)(13).txt
-Dokumen
-Yang menyatakan status mengirim sd 1000 itu yang bagian mana ya?
-
-Secara kode, iya bisa, tapi ada satu masalah besar.
-
-Kalau kamu ubah:
-
-local AUTO_KATA_MAX = 10000
-maka loop ini:
-
-for i = 1, AUTO_KATA_MAX do
-akan berjalan dari 1 sampai 10.000. 
-
- 
-
-
-Namun, fungsi yang mengubah angka menjadi tulisan (getNumberSpelling) di script ini hanya mendukung sampai 1000. Terlihat dari kodenya:
-
-if num == 1000 then
-    return "one thousand"
-end
-Setelah itu fungsi hanya menangani angka di bawah 1000. 
-
-
-Akibatnya:
-
-1–999 ✅
-
-1000 → "one thousand" ✅
-
-1001 ke atas ❌ kemungkinan error atau menghasilkan teks yang salah, karena:
-
-local hundredDigit = math.floor(num / 100)
-local hundredText = ones[hundredDigit] .. " hundred"
-Untuk 1001, hundredDigit menjadi 10, padahal tabel ones hanya berisi 1–19 untuk satuan/belasan, bukan ratusan ribuan. 
-
-
-Jadi hanya menaikkan AUTO_KATA_MAX ke 10000 tidak cukup. Kamu juga harus mengubah fungsi getNumberSpelling() agar bisa mengeja angka sampai 10.000 (misalnya "one thousand one", "nine thousand nine hundred ninety nine", dst.). Tanpa itu, script tidak akan dapat mengirim ejaan yang benar setelah melewati 1000.
-
-
-Nah untuk ngubah ke 10000 gimana?
-
-Kalau ingin sampai 10.000, yang perlu diubah bukan cuma:
-
-local AUTO_KATA_MAX = 10000
-Tapi juga fungsi getNumberSpelling() agar bisa mengeja ribuan.
-
-Misalnya ganti seluruh fungsi getNumberSpelling() menjadi seperti ini:
-
-local function getNumberSpelling(num)
-	if num < 100 then
-		return getUnder100(num)
-
-	elseif num < 1000 then
-		local hundredDigit = math.floor(num / 100)
-		local remainder = num % 100
-
-		local hundredText = ones[hundredDigit] .. " hundred"
-
-		if remainder == 0 then
-			return hundredText
-		else
-			return hundredText .. " " .. getUnder100(remainder)
-		end
-
-	elseif num < 10000 then
-		local thousandDigit = math.floor(num / 1000)
-		local remainder = num % 1000
-
-		local thousandText = ones[thousandDigit] .. " thousand"
-
-		if remainder == 0 then
-			return thousandText
-		elseif remainder < 100 then
-			return thousandText .. " " .. getUnder100(remainder)
-		else
-			local hundredDigit = math.floor(remainder / 100)
-			local lastTwo = remainder % 100
-
-			local hundredText = ones[hundredDigit] .. " hundred"
-
-			if lastTwo == 0 then
-				return thousandText .. " " .. hundredText
-			else
-				return thousandText .. " " .. hundredText .. " " .. getUnder100(lastTwo)
-			end
-		end
-
-	elseif num == 10000 then
-		return "ten thousand"
-
-	else
-		return tostring(num)
-	end
-end
-Lalu ubah batasnya menjadi:
-
-local AUTO_KATA_MAX = 10000
-Dengan begitu hasilnya akan seperti:
-
-1000 → one thousand
-
-1001 → one thousand one
-
-1234 → one thousand two hundred thirty four
-
-5678 → five thousand six hundred seventy eight
-
-9999 → nine thousand nine hundred ninety nine
-
-10000 → ten thousand
-
-Jadi script akan mengirim sampai 10.000 tanpa error.
-
-
-coba revisi code full dong
-
-Memproses selama 26s
-Sudah gue revisi full:
-
-Maksimal pengiriman jadi 10.000
-
-Ejaan angka mendukung 1–10.000
-
-Status menjadi Mengirim x/10000
-
-Status selesai menjadi Auto Kata selesai (1-10000)!
-
-SmartHub_AutoKata_10000.lua
-
-Catatan: dengan delay saat ini:
-
-local AUTO_KATA_DELAY = 1
-Mengirim 10.000 kata memerlukan sekitar 10.000 detik atau 2 jam 46 menit, belum termasuk jeda dari game.
-
-
-Perpustakaan
-/
-SmartHub_AutoKata_10000.lua
-
-
 -- [[ CONFIGURATION & DICTIONARY SYSTEM ]]
 local ones = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"}
 local tens = {"twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"}
@@ -229,14 +81,14 @@ local OBBY_CONFIG = {
 		LoopDelay = 1,
 	},
 	Bintara = {
-		TweenSpeed = 250,
-		StepDelay = 4.5,
-		LoopDelay = 2,
+		TweenSpeed = 300,
+		StepDelay = 3,
+		LoopDelay = 1,
 	},
 	Pama = {
-		TweenSpeed = 250,
-		StepDelay = 4.5,
-		LoopDelay = 2,
+		TweenSpeed = 300,
+		StepDelay = 3,
+		LoopDelay = 1,
 	},
 }
 
