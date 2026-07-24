@@ -70,9 +70,18 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- [[ ANTI-AFK OTOMATIS: SELALU AKTIF ]]
+player.Idled:Connect(function()
+	pcall(function()
+		VirtualUser:CaptureController()
+		VirtualUser:ClickButton2(Vector2.new(0, 0))
+	end)
+end)
 
 local OBBY_CONFIG = {
 	Tamtama = {
