@@ -14,45 +14,33 @@ local afkRunning = true
 do
 	local VirtualUser = game:GetService("VirtualUser")
 
-	local function silenceIdle()
-		local ok, list = pcall(function()
-			return getconnections(LocalPlayer.Idled)
-		end)
-
-		if not ok or type(list) ~= "table" then
+	-- Anti-AFK otomatis aktif sejak script dijalankan.
+	-- Jangan men-disable semua koneksi LocalPlayer.Idled karena koneksi
+	-- anti-AFK milik script sendiri bisa ikut mati.
+	local function antiAfkPulse()
+		if not afkRunning or not LocalPlayer.Parent then
 			return
 		end
 
-		for _, connection in ipairs(list) do
-			pcall(function()
-				connection:Disable()
-			end)
-		end
-	end
-
-	local function nudge()
 		pcall(function()
 			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector3.new())
+			VirtualUser:ClickButton2(Vector2.new(0, 0))
 		end)
 	end
 
-	silenceIdle()
+	-- Metode utama: langsung kirim input ketika Roblox mendeteksi pemain idle.
+	afkConns[#afkConns + 1] = LocalPlayer.Idled:Connect(antiAfkPulse)
 
-	afkConns[#afkConns + 1] = LocalPlayer.Idled:Connect(nudge)
-
+	-- Cadangan: kirim input ringan secara berkala tanpa menunggu event idle.
 	task.spawn(function()
-		while afkRunning do
+		while afkRunning and LocalPlayer.Parent do
 			task.wait(60)
-
-			if not afkRunning or not LocalPlayer.Parent then
-				break
-			end
-
-			silenceIdle()
-			nudge()
+			antiAfkPulse()
 		end
 	end)
+
+	-- Jalankan satu kali saat startup untuk memastikan VirtualUser siap.
+	antiAfkPulse()
 end
 
 local function resolveGuiRoot()
