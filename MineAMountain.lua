@@ -14,33 +14,17 @@ local afkRunning = true
 do
 	local VirtualUser = game:GetService("VirtualUser")
 
-	-- Anti-AFK otomatis aktif sejak script dijalankan.
-	-- Jangan men-disable semua koneksi LocalPlayer.Idled karena koneksi
-	-- anti-AFK milik script sendiri bisa ikut mati.
-	local function antiAfkPulse()
-		if not afkRunning or not LocalPlayer.Parent then
+	-- Anti-AFK otomatis, mengikuti metode referensi yang sudah terbukti.
+	afkConns[#afkConns + 1] = LocalPlayer.Idled:Connect(function()
+		if not afkRunning then
 			return
 		end
 
 		pcall(function()
 			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector2.new(0, 0))
+			VirtualUser:ClickButton2(Vector2.new())
 		end)
-	end
-
-	-- Metode utama: langsung kirim input ketika Roblox mendeteksi pemain idle.
-	afkConns[#afkConns + 1] = LocalPlayer.Idled:Connect(antiAfkPulse)
-
-	-- Cadangan: kirim input ringan secara berkala tanpa menunggu event idle.
-	task.spawn(function()
-		while afkRunning and LocalPlayer.Parent do
-			task.wait(60)
-			antiAfkPulse()
-		end
 	end)
-
-	-- Jalankan satu kali saat startup untuk memastikan VirtualUser siap.
-	antiAfkPulse()
 end
 
 local function resolveGuiRoot()
