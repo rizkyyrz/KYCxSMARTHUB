@@ -1,11 +1,13 @@
 --==============================================================
--- CenzDanceEmoteData GUI DUMPER
--- Mobile Executor Friendly
+-- CenzDanceEmoteData MOBILE PAGED DUMPER
+-- Dances / Emotes
+-- Numeric order
+-- 50 entries per page
 --==============================================================
 
 local TARGET_NAME = "CenzDanceEmoteData"
+local PAGE_SIZE = 50
 
-local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UIS = game:GetService("UserInputService")
 
@@ -23,9 +25,8 @@ if gethui then
 	end
 end
 
--- Hapus GUI lama
 pcall(function()
-	local old = guiParent:FindFirstChild("CenzDanceDumpGUI")
+	local old = guiParent:FindFirstChild("CenzDancePagedDump")
 
 	if old then
 		old:Destroy()
@@ -33,31 +34,37 @@ pcall(function()
 end)
 
 --==============================================================
+-- COLORS
+--==============================================================
+
+local BG = Color3.fromRGB(18, 18, 22)
+local HEADER = Color3.fromRGB(26, 26, 32)
+local PANEL = Color3.fromRGB(12, 12, 15)
+local BUTTON = Color3.fromRGB(42, 42, 50)
+local ACTIVE = Color3.fromRGB(235, 235, 240)
+
+--==============================================================
 -- GUI
 --==============================================================
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CenzDanceDumpGUI"
+ScreenGui.Name = "CenzDancePagedDump"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = false
 ScreenGui.DisplayOrder = 999999
 ScreenGui.Parent = guiParent
 
 local Main = Instance.new("Frame")
-Main.Name = "Main"
-Main.Size = UDim2.new(0.92, 0, 0.78, 0)
+Main.Size = UDim2.new(0.94, 0, 0.82, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
 Main.AnchorPoint = Vector2.new(0.5, 0.5)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+Main.BackgroundColor3 = BG
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = Main
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
 local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(70, 70, 80)
+Stroke.Color = Color3.fromRGB(65, 65, 75)
 Stroke.Thickness = 1
 Stroke.Parent = Main
 
@@ -66,121 +73,179 @@ Stroke.Parent = Main
 --==============================================================
 
 local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 54)
-Header.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+Header.Size = UDim2.new(1, 0, 0, 56)
+Header.BackgroundColor3 = HEADER
 Header.BorderSizePixel = 0
 Header.Parent = Main
 
-local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 12)
-HeaderCorner.Parent = Header
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
 
-local FixBottom = Instance.new("Frame")
-FixBottom.Size = UDim2.new(1, 0, 0, 12)
-FixBottom.Position = UDim2.new(0, 0, 1, -12)
-FixBottom.BackgroundColor3 = Header.BackgroundColor3
-FixBottom.BorderSizePixel = 0
-FixBottom.Parent = Header
+local Fix = Instance.new("Frame")
+Fix.Size = UDim2.new(1, 0, 0, 12)
+Fix.Position = UDim2.new(0, 0, 1, -12)
+Fix.BackgroundColor3 = HEADER
+Fix.BorderSizePixel = 0
+Fix.Parent = Header
 
 local Title = Instance.new("TextLabel")
 Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 16, 0, 5)
-Title.Size = UDim2.new(1, -120, 0, 24)
+Title.Position = UDim2.new(0, 14, 0, 6)
+Title.Size = UDim2.new(1, -65, 0, 22)
 Title.Font = Enum.Font.GothamBold
 Title.Text = "CenzDanceEmoteData"
-Title.TextColor3 = Color3.fromRGB(245, 245, 245)
 Title.TextSize = 17
+Title.TextColor3 = Color3.new(1, 1, 1)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
 local Status = Instance.new("TextLabel")
 Status.BackgroundTransparency = 1
-Status.Position = UDim2.new(0, 16, 0, 29)
-Status.Size = UDim2.new(1, -120, 0, 18)
+Status.Position = UDim2.new(0, 14, 0, 29)
+Status.Size = UDim2.new(1, -65, 0, 18)
 Status.Font = Enum.Font.Gotham
-Status.Text = "Mencari ModuleScript..."
-Status.TextColor3 = Color3.fromRGB(170, 170, 180)
+Status.Text = "Loading..."
 Status.TextSize = 11
+Status.TextColor3 = Color3.fromRGB(165, 165, 175)
 Status.TextXAlignment = Enum.TextXAlignment.Left
 Status.Parent = Header
 
 local Close = Instance.new("TextButton")
 Close.Size = UDim2.new(0, 38, 0, 38)
-Close.Position = UDim2.new(1, -46, 0, 8)
-Close.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
-Close.Text = "×"
-Close.TextSize = 24
-Close.Font = Enum.Font.GothamBold
-Close.TextColor3 = Color3.fromRGB(235, 235, 235)
+Close.Position = UDim2.new(1, -46, 0, 9)
+Close.BackgroundColor3 = BUTTON
 Close.BorderSizePixel = 0
+Close.Text = "×"
+Close.TextSize = 23
+Close.Font = Enum.Font.GothamBold
+Close.TextColor3 = Color3.new(1, 1, 1)
 Close.Parent = Header
 
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
-CloseCorner.Parent = Close
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
 
 Close.MouseButton1Click:Connect(function()
 	ScreenGui:Destroy()
 end)
 
 --==============================================================
--- TEXT AREA
+-- TABS
 --==============================================================
 
-local TextBox = Instance.new("TextBox")
-TextBox.Name = "DumpOutput"
-TextBox.Position = UDim2.new(0, 10, 0, 64)
-TextBox.Size = UDim2.new(1, -20, 1, -124)
-TextBox.BackgroundColor3 = Color3.fromRGB(13, 13, 16)
-TextBox.BorderSizePixel = 0
+local Tabs = Instance.new("Frame")
+Tabs.Position = UDim2.new(0, 10, 0, 66)
+Tabs.Size = UDim2.new(1, -20, 0, 38)
+Tabs.BackgroundTransparency = 1
+Tabs.Parent = Main
 
-TextBox.Font = Enum.Font.Code
-TextBox.TextSize = 12
-TextBox.TextColor3 = Color3.fromRGB(225, 225, 230)
+local DancesButton = Instance.new("TextButton")
+DancesButton.Size = UDim2.new(0.5, -4, 1, 0)
+DancesButton.BackgroundColor3 = ACTIVE
+DancesButton.BorderSizePixel = 0
+DancesButton.Text = "DANCES"
+DancesButton.Font = Enum.Font.GothamBold
+DancesButton.TextSize = 12
+DancesButton.TextColor3 = BG
+DancesButton.Parent = Tabs
 
-TextBox.TextXAlignment = Enum.TextXAlignment.Left
-TextBox.TextYAlignment = Enum.TextYAlignment.Top
+Instance.new("UICorner", DancesButton).CornerRadius = UDim.new(0, 8)
 
-TextBox.ClearTextOnFocus = false
-TextBox.MultiLine = true
-TextBox.TextWrapped = false
+local EmotesButton = Instance.new("TextButton")
+EmotesButton.Position = UDim2.new(0.5, 4, 0, 0)
+EmotesButton.Size = UDim2.new(0.5, -4, 1, 0)
+EmotesButton.BackgroundColor3 = BUTTON
+EmotesButton.BorderSizePixel = 0
+EmotesButton.Text = "EMOTES"
+EmotesButton.Font = Enum.Font.GothamBold
+EmotesButton.TextSize = 12
+EmotesButton.TextColor3 = Color3.new(1, 1, 1)
+EmotesButton.Parent = Tabs
 
-TextBox.Text = "-- Loading CenzDanceEmoteData..."
+Instance.new("UICorner", EmotesButton).CornerRadius = UDim.new(0, 8)
 
-TextBox.Parent = Main
+--==============================================================
+-- TEXT OUTPUT
+--==============================================================
 
-local BoxCorner = Instance.new("UICorner")
-BoxCorner.CornerRadius = UDim.new(0, 8)
-BoxCorner.Parent = TextBox
+local Output = Instance.new("TextBox")
+Output.Position = UDim2.new(0, 10, 0, 114)
+Output.Size = UDim2.new(1, -20, 1, -176)
+Output.BackgroundColor3 = PANEL
+Output.BorderSizePixel = 0
+
+Output.Font = Enum.Font.Code
+Output.TextSize = 12
+Output.TextColor3 = Color3.fromRGB(225, 225, 230)
+
+Output.TextXAlignment = Enum.TextXAlignment.Left
+Output.TextYAlignment = Enum.TextYAlignment.Top
+
+Output.MultiLine = true
+Output.ClearTextOnFocus = false
+Output.TextEditable = false
+Output.TextWrapped = false
+
+Output.Text = "-- Loading..."
+
+Output.Parent = Main
+
+Instance.new("UICorner", Output).CornerRadius = UDim.new(0, 8)
 
 local Padding = Instance.new("UIPadding")
-Padding.PaddingLeft = UDim.new(0, 10)
-Padding.PaddingRight = UDim.new(0, 10)
-Padding.PaddingTop = UDim.new(0, 10)
-Padding.PaddingBottom = UDim.new(0, 10)
-Padding.Parent = TextBox
+Padding.PaddingLeft = UDim.new(0, 9)
+Padding.PaddingRight = UDim.new(0, 9)
+Padding.PaddingTop = UDim.new(0, 9)
+Padding.PaddingBottom = UDim.new(0, 9)
+Padding.Parent = Output
 
 --==============================================================
--- BOTTOM BUTTON
+-- PAGE CONTROLS
 --==============================================================
 
-local CopyButton = Instance.new("TextButton")
-CopyButton.Position = UDim2.new(0, 10, 1, -50)
-CopyButton.Size = UDim2.new(1, -20, 0, 40)
-CopyButton.BackgroundColor3 = Color3.fromRGB(238, 238, 242)
-CopyButton.BorderSizePixel = 0
-CopyButton.Font = Enum.Font.GothamBold
-CopyButton.Text = "COPY ALL"
-CopyButton.TextColor3 = Color3.fromRGB(20, 20, 24)
-CopyButton.TextSize = 13
-CopyButton.Parent = Main
+local Controls = Instance.new("Frame")
+Controls.Position = UDim2.new(0, 10, 1, -52)
+Controls.Size = UDim2.new(1, -20, 0, 42)
+Controls.BackgroundTransparency = 1
+Controls.Parent = Main
 
-local CopyCorner = Instance.new("UICorner")
-CopyCorner.CornerRadius = UDim.new(0, 8)
-CopyCorner.Parent = CopyButton
+local Prev = Instance.new("TextButton")
+Prev.Size = UDim2.new(0.22, 0, 1, 0)
+Prev.BackgroundColor3 = BUTTON
+Prev.BorderSizePixel = 0
+Prev.Text = "< PREV"
+Prev.Font = Enum.Font.GothamBold
+Prev.TextSize = 11
+Prev.TextColor3 = Color3.new(1, 1, 1)
+Prev.Parent = Controls
+
+Instance.new("UICorner", Prev).CornerRadius = UDim.new(0, 8)
+
+local Copy = Instance.new("TextButton")
+Copy.Position = UDim2.new(0.24, 0, 0, 0)
+Copy.Size = UDim2.new(0.52, 0, 1, 0)
+Copy.BackgroundColor3 = ACTIVE
+Copy.BorderSizePixel = 0
+Copy.Text = "COPY PAGE"
+Copy.Font = Enum.Font.GothamBold
+Copy.TextSize = 12
+Copy.TextColor3 = BG
+Copy.Parent = Controls
+
+Instance.new("UICorner", Copy).CornerRadius = UDim.new(0, 8)
+
+local Next = Instance.new("TextButton")
+Next.Position = UDim2.new(0.78, 0, 0, 0)
+Next.Size = UDim2.new(0.22, 0, 1, 0)
+Next.BackgroundColor3 = BUTTON
+Next.BorderSizePixel = 0
+Next.Text = "NEXT >"
+Next.Font = Enum.Font.GothamBold
+Next.TextSize = 11
+Next.TextColor3 = Color3.new(1, 1, 1)
+Next.Parent = Controls
+
+Instance.new("UICorner", Next).CornerRadius = UDim.new(0, 8)
 
 --==============================================================
--- DRAG GUI
+-- DRAG
 --==============================================================
 
 do
@@ -190,8 +255,8 @@ do
 	local dragInput
 
 	Header.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
+		if input.UserInputType == Enum.UserInputType.Touch
+			or input.UserInputType == Enum.UserInputType.MouseButton1
 		then
 			dragging = true
 			dragStart = input.Position
@@ -206,15 +271,15 @@ do
 	end)
 
 	Header.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch
+		if input.UserInputType == Enum.UserInputType.Touch
+			or input.UserInputType == Enum.UserInputType.MouseMovement
 		then
 			dragInput = input
 		end
 	end)
 
 	UIS.InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
+		if dragging and input == dragInput then
 			local delta = input.Position - dragStart
 
 			Main.Position = UDim2.new(
@@ -228,49 +293,42 @@ do
 end
 
 --==============================================================
--- SERIALIZER
+-- DATA
 --==============================================================
 
-local visited = {}
+local moduleData
 
-local function quote(str)
-	return string.format("%q", str)
+local currentSection = "Dances"
+local currentPage = 1
+
+--==============================================================
+-- FORMAT HELPERS
+--==============================================================
+
+local function formatString(str)
+	return string.format("%q", tostring(str))
 end
 
-local function indent(level)
-	return string.rep("    ", level)
-end
-
-local function serialize(value, level)
-	level = level or 0
-
+local function formatValue(value)
 	local valueType = typeof(value)
 
-	if valueType == "nil" then
-		return "nil"
+	if valueType == "string" then
+		return formatString(value)
 
-	elseif valueType == "string" then
-		return quote(value)
-
-	elseif valueType == "number" then
-		if value ~= value then
-			return "0/0"
-		elseif value == math.huge then
-			return "math.huge"
-		elseif value == -math.huge then
-			return "-math.huge"
-		end
-
+	elseif valueType == "number"
+		or valueType == "boolean"
+	then
 		return tostring(value)
 
-	elseif valueType == "boolean" then
+	elseif valueType == "EnumItem" then
 		return tostring(value)
 
-	elseif valueType == "Vector2" then
+	elseif valueType == "Color3" then
 		return string.format(
-			"Vector2.new(%s, %s)",
-			value.X,
-			value.Y
+			"Color3.fromRGB(%d, %d, %d)",
+			math.round(value.R * 255),
+			math.round(value.G * 255),
+			math.round(value.B * 255)
 		)
 
 	elseif valueType == "Vector3" then
@@ -281,146 +339,356 @@ local function serialize(value, level)
 			value.Z
 		)
 
-	elseif valueType == "UDim" then
+	elseif valueType == "Vector2" then
 		return string.format(
-			"UDim.new(%s, %s)",
-			value.Scale,
-			value.Offset
+			"Vector2.new(%s, %s)",
+			value.X,
+			value.Y
 		)
 
-	elseif valueType == "UDim2" then
-		return string.format(
-			"UDim2.new(%s, %s, %s, %s)",
-			value.X.Scale,
-			value.X.Offset,
-			value.Y.Scale,
-			value.Y.Offset
-		)
-
-	elseif valueType == "Color3" then
-		return string.format(
-			"Color3.fromRGB(%d, %d, %d)",
-			math.round(value.R * 255),
-			math.round(value.G * 255),
-			math.round(value.B * 255)
-		)
-
-	elseif valueType == "CFrame" then
-		local components = {value:GetComponents()}
-		local formatted = {}
-
-		for i, component in ipairs(components) do
-			formatted[i] = tostring(component)
-		end
-
-		return "CFrame.new(" .. table.concat(formatted, ", ") .. ")"
-
-	elseif valueType == "BrickColor" then
-		return "BrickColor.new(" .. quote(value.Name) .. ")"
-
-	elseif valueType == "EnumItem" then
-		return tostring(value)
-
-	elseif valueType == "NumberRange" then
-		return string.format(
-			"NumberRange.new(%s, %s)",
-			value.Min,
-			value.Max
-		)
-
-	elseif valueType == "Instance" then
-		local ok, path = pcall(function()
-			return value:GetFullName()
-		end)
-
-		if ok then
-			return quote("<Instance: " .. path .. ">")
-		end
-
-		return quote("<Instance>")
-
-	elseif valueType == "function" then
-		return "function(...) --[[ FUNCTION ]] end"
-
-	elseif valueType == "table" then
-
-		if visited[value] then
-			return quote("<recursive table>")
-		end
-
-		visited[value] = true
-
-		local result = {"{"}
-
-		local keys = {}
-
-		for key in pairs(value) do
-			table.insert(keys, key)
-		end
-
-		table.sort(keys, function(a, b)
-			return tostring(a) < tostring(b)
-		end)
-
-		for _, key in ipairs(keys) do
-			local keyString
-
-			if type(key) == "string"
-				and string.match(key, "^[%a_][%w_]*$")
-			then
-				keyString = key
-			else
-				keyString =
-					"["
-					.. serialize(key, level + 1)
-					.. "]"
-			end
-
-			table.insert(
-				result,
-				indent(level + 1)
-					.. keyString
-					.. " = "
-					.. serialize(value[key], level + 1)
-					.. ","
-			)
-		end
-
-		table.insert(
-			result,
-			indent(level) .. "}"
-		)
-
-		visited[value] = nil
-
-		return table.concat(result, "\n")
+	elseif valueType == "nil" then
+		return "nil"
 	end
 
-	return quote(
+	return formatString(
 		"<" .. valueType .. "> " .. tostring(value)
 	)
 end
 
 --==============================================================
+-- ENTRY FORMAT
+--==============================================================
+
+local function formatEntry(entry, index)
+
+	if type(entry) ~= "table" then
+		return string.format(
+			"[%d] = %s,",
+			index,
+			formatValue(entry)
+		)
+	end
+
+	-- Format khusus CenzDance:
+	-- { "NAME", AnimationId }
+
+	if entry[1] ~= nil and entry[2] ~= nil then
+
+		return string.format(
+			'[%d] = { %s, %s },',
+			index,
+			formatValue(entry[1]),
+			formatValue(entry[2])
+		)
+	end
+
+	-- Fallback table
+	local lines = {
+		string.format("[%d] = {", index)
+	}
+
+	local keys = {}
+
+	for key in pairs(entry) do
+		table.insert(keys, key)
+	end
+
+	table.sort(keys, function(a, b)
+
+		if type(a) == "number"
+			and type(b) == "number"
+		then
+			return a < b
+		end
+
+		return tostring(a) < tostring(b)
+	end)
+
+	for _, key in ipairs(keys) do
+
+		table.insert(
+			lines,
+			string.format(
+				"    [%s] = %s,",
+				formatValue(key),
+				formatValue(entry[key])
+			)
+		)
+	end
+
+	table.insert(lines, "},")
+
+	return table.concat(lines, "\n")
+end
+
+--==============================================================
+-- PAGE
+--==============================================================
+
+local function getSection()
+
+	if not moduleData then
+		return {}
+	end
+
+	local section = moduleData[currentSection]
+
+	if type(section) ~= "table" then
+		return {}
+	end
+
+	return section
+end
+
+local function getPageCount()
+
+	local section = getSection()
+
+	return math.max(
+		1,
+		math.ceil(#section / PAGE_SIZE)
+	)
+end
+
+local function render()
+
+	local section = getSection()
+	local pageCount = getPageCount()
+
+	if currentPage > pageCount then
+		currentPage = pageCount
+	end
+
+	if currentPage < 1 then
+		currentPage = 1
+	end
+
+	local startIndex =
+		(currentPage - 1) * PAGE_SIZE + 1
+
+	local endIndex =
+		math.min(
+			startIndex + PAGE_SIZE - 1,
+			#section
+		)
+
+	local lines = {}
+
+	table.insert(
+		lines,
+		"--=================================================="
+	)
+
+	table.insert(
+		lines,
+		"-- CenzDanceEmoteData."
+			.. currentSection
+	)
+
+	table.insert(
+		lines,
+		"-- PAGE "
+			.. currentPage
+			.. " / "
+			.. pageCount
+	)
+
+	table.insert(
+		lines,
+		"-- ITEMS "
+			.. startIndex
+			.. " - "
+			.. endIndex
+			.. " / "
+			.. #section
+	)
+
+	table.insert(
+		lines,
+		"--=================================================="
+	)
+
+	table.insert(lines, "")
+
+	table.insert(
+		lines,
+		"CenzDanceEmoteData."
+			.. currentSection
+			.. " = {"
+	)
+
+	for i = startIndex, endIndex do
+
+		local entry = section[i]
+
+		table.insert(
+			lines,
+			"    "
+				.. string.gsub(
+					formatEntry(entry, i),
+					"\n",
+					"\n    "
+				)
+		)
+	end
+
+	table.insert(lines, "}")
+
+	Output.Text =
+		table.concat(lines, "\n")
+
+	Status.Text =
+		currentSection
+		.. " • "
+		.. #section
+		.. " items • Page "
+		.. currentPage
+		.. "/"
+		.. pageCount
+
+	Prev.TextTransparency =
+		currentPage <= 1 and 0.55 or 0
+
+	Next.TextTransparency =
+		currentPage >= pageCount and 0.55 or 0
+end
+
+--==============================================================
+-- TAB SWITCHING
+--==============================================================
+
+local function selectSection(name)
+
+	currentSection = name
+	currentPage = 1
+
+	if name == "Dances" then
+
+		DancesButton.BackgroundColor3 = ACTIVE
+		DancesButton.TextColor3 = BG
+
+		EmotesButton.BackgroundColor3 = BUTTON
+		EmotesButton.TextColor3 =
+			Color3.new(1, 1, 1)
+
+	else
+
+		EmotesButton.BackgroundColor3 = ACTIVE
+		EmotesButton.TextColor3 = BG
+
+		DancesButton.BackgroundColor3 = BUTTON
+		DancesButton.TextColor3 =
+			Color3.new(1, 1, 1)
+	end
+
+	render()
+end
+
+DancesButton.MouseButton1Click:Connect(function()
+	selectSection("Dances")
+end)
+
+EmotesButton.MouseButton1Click:Connect(function()
+	selectSection("Emotes")
+end)
+
+--==============================================================
+-- PREV / NEXT
+--==============================================================
+
+Prev.MouseButton1Click:Connect(function()
+
+	if currentPage > 1 then
+		currentPage -= 1
+		render()
+	end
+end)
+
+Next.MouseButton1Click:Connect(function()
+
+	local pages = getPageCount()
+
+	if currentPage < pages then
+		currentPage += 1
+		render()
+	end
+end)
+
+--==============================================================
+-- COPY CURRENT PAGE
+--==============================================================
+
+Copy.MouseButton1Click:Connect(function()
+
+	local clipboard =
+		setclipboard
+		or toclipboard
+		or set_clipboard
+
+	if not clipboard then
+
+		Copy.Text =
+			"NO CLIPBOARD"
+
+		task.delay(1.5, function()
+			if Copy then
+				Copy.Text = "COPY PAGE"
+			end
+		end)
+
+		return
+	end
+
+	local ok = pcall(
+		clipboard,
+		Output.Text
+	)
+
+	if ok then
+
+		Copy.Text =
+			"COPIED PAGE "
+			.. currentPage
+			.. " ✓"
+
+	else
+		Copy.Text = "COPY FAILED"
+	end
+
+	task.delay(1.5, function()
+
+		if Copy then
+			Copy.Text = "COPY PAGE"
+		end
+	end)
+end)
+
+--==============================================================
 -- FIND MODULE
 --==============================================================
 
-local function findTarget()
+local function findModule()
 
-	-- Prioritas ReplicatedStorage
-	local RS = game:GetService("ReplicatedStorage")
-
-	local found = RS:FindFirstChild(
-		TARGET_NAME,
-		true
+	local RS = game:GetService(
+		"ReplicatedStorage"
 	)
 
-	if found and found:IsA("ModuleScript") then
-		return found
+	local target =
+		RS:FindFirstChild(
+			TARGET_NAME,
+			true
+		)
+
+	if target
+		and target:IsA("ModuleScript")
+	then
+		return target
 	end
 
-	-- Cari seluruh replicated descendants
-	for _, obj in ipairs(game:GetDescendants()) do
+	for _, obj in ipairs(
+		game:GetDescendants()
+	) do
+
 		if obj.Name == TARGET_NAME
 			and obj:IsA("ModuleScript")
 		then
@@ -432,115 +700,78 @@ local function findTarget()
 end
 
 --==============================================================
--- DUMP
+-- LOAD
 --==============================================================
 
 task.spawn(function()
 
-	Status.Text = "Mencari " .. TARGET_NAME .. "..."
+	Status.Text =
+		"Mencari "
+		.. TARGET_NAME
+		.. "..."
 
-	local target = findTarget()
+	local target = findModule()
 
 	if not target then
-		Status.Text = "ModuleScript tidak ditemukan"
 
-		TextBox.Text =
+		Status.Text =
+			"ModuleScript tidak ditemukan"
+
+		Output.Text =
 			"-- ERROR\n"
 			.. "-- "
 			.. TARGET_NAME
-			.. " tidak ditemukan dari client."
+			.. " tidak ditemukan."
 
 		return
 	end
 
 	Status.Text =
-		"FOUND: "
+		"FOUND • "
 		.. target:GetFullName()
 
-	TextBox.Text =
+	Output.Text =
 		"-- Found:\n-- "
 		.. target:GetFullName()
-		.. "\n\n-- Requiring module..."
+		.. "\n\n-- Require..."
 
 	task.wait()
 
-	local ok, moduleData = pcall(
-		require,
-		target
-	)
+	local ok, result =
+		pcall(
+			require,
+			target
+		)
 
 	if not ok then
-		Status.Text = "Require gagal"
 
-		TextBox.Text =
+		Status.Text =
+			"Require FAILED"
+
+		Output.Text =
 			"-- REQUIRE FAILED\n\n"
-			.. tostring(moduleData)
+			.. tostring(result)
 
 		return
 	end
 
-	Status.Text = "Require OK • Membuat output..."
+	if type(result) ~= "table" then
 
-	task.wait()
+		Status.Text =
+			"Return bukan table"
 
-	local output =
-		"--==================================================\n"
-		.. "-- CenzDanceEmoteData\n"
-		.. "-- Dumped from: "
-		.. target:GetFullName()
-		.. "\n"
-		.. "--==================================================\n\n"
-		.. "return "
-		.. serialize(moduleData, 0)
-
-	TextBox.Text = output
-
-	Status.Text =
-		"READY • "
-		.. tostring(#output)
-		.. " characters"
-
-	CopyButton.Text = "COPY ALL"
-end)
-
---==============================================================
--- COPY BUTTON
---==============================================================
-
-CopyButton.MouseButton1Click:Connect(function()
-
-	local clipboard =
-		setclipboard
-		or toclipboard
-		or set_clipboard
-
-	if not clipboard then
-		CopyButton.Text =
-			"EXECUTOR TIDAK SUPPORT CLIPBOARD"
-
-		task.delay(2, function()
-			if CopyButton then
-				CopyButton.Text = "COPY ALL"
-			end
-		end)
+		Output.Text =
+			"-- Module return type:\n"
+			.. typeof(result)
+			.. "\n\n"
+			.. tostring(result)
 
 		return
 	end
 
-	local ok = pcall(
-		clipboard,
-		TextBox.Text
-	)
+	moduleData = result
 
-	if ok then
-		CopyButton.Text = "COPIED ✓"
+	Status.Text = "READY"
 
-		task.delay(1.5, function()
-			if CopyButton then
-				CopyButton.Text = "COPY ALL"
-			end
-		end)
-	else
-		CopyButton.Text = "COPY FAILED"
-	end
+	selectSection("Dances")
 end)
