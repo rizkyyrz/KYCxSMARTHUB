@@ -1,5 +1,5 @@
 --[[
-    RZKY Studio | Instance Saver v1.2 (Delta client source recovery)
+    RZKY Studio | Instance Saver v1.4 (XML Integrity Fix)
     Mobile + desktop GUI / client-visible instance and script source backup
     GUI and wrapper: RZKY Studio edition.
     Serialization engine adapted from user-provided UniversalSynSaveInstance source.
@@ -776,11 +776,64 @@ for rangeStart, rangeEnd in string.gmatch(ESCAPES_PATTERN, "(.)%-(.)") do
 	end
 end
 
+-- RZKY v1.4: XML 1.0 must not contain raw control bytes, malformed UTF-8,
+-- or an unsplit CDATA terminator. Do not alter valid Unicode/source text.
+local function RZKY_XmlSafe(raw)
+    if type(raw) ~= "string" then raw = tostring(raw or "") end
+    raw = string.gsub(raw, "[%z\1-\8\11\12\14-\31]", "")
+    raw = string.gsub(raw, "\239\191[\190\191]", "?") -- U+FFFE / U+FFFF
+    local ok, length = pcall(utf8.len, raw)
+    if ok and length then return raw end
+
+    -- Invalid UTF-8 is uncommon, but some executor properties return raw bytes.
+    -- Replace only malformed sequences, keeping valid UTF-8 sequences intact.
+    local out, size, i, n = {}, 0, 1, #raw
+    while i <= n do
+        local b1 = string.byte(raw, i)
+        local needed = 0
+        if b1 < 128 then
+            needed = 1
+        elseif b1 >= 194 and b1 <= 223 then
+            needed = 2
+        elseif b1 >= 224 and b1 <= 239 then
+            needed = 3
+        elseif b1 >= 240 and b1 <= 244 then
+            needed = 4
+        end
+        local valid = needed > 0 and i + needed - 1 <= n
+        if valid and needed > 1 then
+            local b2 = string.byte(raw, i + 1)
+            valid = b2 >= 128 and b2 <= 191
+            if needed == 3 then
+                valid = valid and not (b1 == 224 and b2 < 160)
+                    and not (b1 == 237 and b2 >= 160)
+            elseif needed == 4 then
+                valid = valid and not (b1 == 240 and b2 < 144)
+                    and not (b1 == 244 and b2 > 143)
+            end
+            for j = 2, needed - 1 do
+                local bj = string.byte(raw, i + j)
+                valid = valid and bj >= 128 and bj <= 191
+            end
+        end
+        size += 1
+        if valid then
+            out[size] = string.sub(raw, i, i + needed - 1)
+            i += needed
+        else
+            out[size] = "?"
+            i += 1
+        end
+    end
+    return table.concat(out)
+end
+
 local XML_Descriptors
 XML_Descriptors = {
-	__CDATA = function(raw) -- ? Normally Roblox doesn't use CDATA unless the string has newline characters (\n); We rather CDATA everything for sake of speed
-		return "<![CDATA[" .. raw .. "]]>"
-	end,
+    __CDATA = function(raw)
+        -- Splitting CDATA preserves exact text while keeping XML well-formed.
+        return "<![CDATA[" .. string.gsub(RZKY_XmlSafe(raw), "]]>", "]]]]><![CDATA[>") .. "]]>"
+    end,
 	__NORMALIZE_NUMBER = function(raw)
 		if raw ~= raw then
 			return "NAN"
@@ -798,9 +851,9 @@ XML_Descriptors = {
 	__MINMAX = function(min, max, descriptor)
 		return "<min>" .. descriptor(min) .. "</min><max>" .. descriptor(max) .. "</max>"
 	end,
-	__PROTECTEDSTRING = function(raw) -- ? its purpose is to "protect" data from being treated as ordinary character data during processing;
-		return string_find(raw, "]]>") and string.gsub(raw, ESCAPES_PATTERN, ESCAPES) or XML_Descriptors.__CDATA(raw)
-	end,
+    __PROTECTEDSTRING = function(raw)
+        return XML_Descriptors.__CDATA(raw)
+    end,
 	__construct_Sequence = function(keypoint_handler)
 		-- The value is the text content, formatted as a space-separated list of floating point numbers.
 		-- tostring(raw) also works (but way slower rn)
@@ -1163,11 +1216,9 @@ XML_Descriptors = {
 	float = nil, -- Float32
 	int = nil, -- Int32
 	int64 = nil, -- Int64 (long)
-	string = function(raw)
-		return (raw == nil or raw == "") and ""
-			or string_find(raw, "]]>") and string.gsub(raw, ESCAPES_PATTERN, ESCAPES)
-			or XML_Descriptors.__CDATA(string.gsub(raw, "\0", ""))
-	end,
+    string = function(raw)
+        return (raw == nil or raw == "") and "" or XML_Descriptors.__CDATA(raw)
+    end,
 
 	--------------------------------------------------------------
 	-----------%localappdata%/Roblox/GlobalSettings_13.xml--------
@@ -3093,29 +3144,27 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 				end
 			end
 		else
-			if CanRead then
-				raw = instance[propertyName]
-			else -- Assuming CanRead == nil (untested)
-				local ok, result = pcall(index, instance, propertyName)
-
-				if ok then
-					raw = result
-				elseif gethiddenproperty then -- ! Be careful with this 'and gethiddenproperty' logic
-					ok, result = pcall(gethiddenproperty, instance, propertyName)
-
-					if ok then
-						raw = result
-
-						property.Special = true
-					end
-				end
-
-				property.CanRead = ok
-
-				if not ok or filterPropVal(raw, propertyName, category) then
-					return __BREAK
-				end
-			end
+            -- v1.3: Metadata may claim a property is readable on an entire
+            -- class, while individual client instances reject it (e.g.
+            -- IconTint on PlayerScripts). Always use a protected accessor.
+            -- Cache only a successful read; a failed read on one instance
+            -- must not poison the inherited property entry for others.
+            local ok, result = pcall(index, instance, propertyName)
+            if ok and not filterPropVal(result, propertyName, category) then
+                raw = result
+                property.CanRead = true
+            else
+                if gethiddenproperty then
+                    local hiddenOk, hiddenValue = pcall(gethiddenproperty, instance, propertyName)
+                    if hiddenOk and not filterPropVal(hiddenValue, propertyName, category) then
+                        raw = hiddenValue
+                        property.Special = true
+                    end
+                end
+                if raw == __BREAK then
+                    return __BREAK
+                end
+            end
 		end
 
 		return raw
@@ -3171,45 +3220,82 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		return prop_list
 	end
 
-	local CHUNK_LIMIT = 200 * 1024 * 1024 -- string length overflow prevention
-	local function save_cache(final)
+    -- v1.4: keep small buffers instead of quadratic currentstr concatenation.
+    local function save_cache(final)
         local savestr = table.concat(savebuffer)
         if StreamingWrite then
             if #savestr > 0 then
                 appendfile(placename, savestr)
                 totalsize += #savestr
             end
-            table.clear(savebuffer)
-            savebuffer_size = 1
-            if StatusText then
-                StatusText.Text = "RZKY Studio • Saving: " .. get_size_format()
-            end
-            task.wait()
-            return
+        elseif #savestr > 0 then
+            chunks[#chunks + 1] = { size = #savestr, str = savestr }
+            totalsize += #savestr
         end
-		currentstr ..= savestr -- TODO: Causes "not enough memory" error on some exec
+        table.clear(savebuffer)
+        savebuffer_size = 1
+        if StatusText then
+            StatusText.Text = "RZKY Studio | Serializing " .. get_size_format()
+        end
+        task.wait()
+    end
 
-		-- writefile(placename, totalstr)
-		-- appendfile(placename, savestr) -- * supposedly causes uneven amount of Tags (e.g. <Item> must be closed with </Item> but sometimes there's more of one than the other). While being under load, the function produces unexpected output?
-		local savestr_len = #savestr
-		totalsize += savestr_len
-		currentsize += savestr_len
-
-		table.clear(savebuffer)
-		savebuffer_size = 1
-
-		if CHUNK_LIMIT < currentsize or final then
-			table.insert(chunks, { size = currentsize, str = currentstr })
-			currentstr, currentsize = "", 0
-		end
-
-		if StatusText then
-			StatusText.Text = "Saving.. Size: " .. get_size_format()
-		end
-		-- ? Needed for at least 1fps (status text)
-		-- task.wait()
-		wait_for_render()
-	end
+    -- Verify generated tag nesting; catches missing/duplicate append chunks
+    -- and invalid CDATA boundaries before any success message is displayed.
+    local function validateXMLStructure(xml)
+        if not string.find(xml, '<roblox version="4">', 1, true) then
+            return false, "Missing Roblox XML header"
+        end
+        local stack, depth, pos, tags = {}, 0, 1, 0
+        while true do
+            local a = string.find(xml, "<", pos, true)
+            if not a then break end
+            local prefix = string.sub(xml, a, a + 8)
+            if prefix == "<![CDATA[" then
+                local e = string.find(xml, "]]>", a + 9, true)
+                if not e then return false, "Unclosed CDATA at byte " .. a end
+                pos = e + 3
+            elseif string.sub(xml, a, a + 3) == "<!--" then
+                local e = string.find(xml, "-->", a + 4, true)
+                if not e then return false, "Unclosed comment at byte " .. a end
+                pos = e + 3
+            elseif string.sub(xml, a, a + 1) == "<?" then
+                local e = string.find(xml, "?>", a + 2, true)
+                if not e then return false, "Unclosed processing instruction" end
+                pos = e + 2
+            else
+                local e = string.find(xml, ">", a + 1, true)
+                if not e then return false, "Unclosed tag at byte " .. a end
+                local rawTag = string.sub(xml, a + 1, e - 1)
+                if string.sub(rawTag, 1, 1) == "!" then
+                    return false, "Unsupported markup at byte " .. a
+                end
+                local closing = string.sub(rawTag, 1, 1) == "/"
+                local name = string.match(rawTag, "^/?([%w_:%-%.]+)")
+                if not name then return false, "Malformed tag at byte " .. a end
+                if closing then
+                    if stack[depth] ~= name then
+                        return false, "Mismatched closing " .. name .. " at byte " .. a
+                    end
+                    stack[depth] = nil
+                    depth -= 1
+                elseif not string.match(rawTag, "/%s*$") then
+                    depth += 1
+                    stack[depth] = name
+                end
+                pos = e + 1
+                tags += 1
+                if tags % 4000 == 0 then task.wait() end
+            end
+        end
+        if depth ~= 0 then
+            return false, "Unclosed <" .. tostring(stack[depth]) .. "> at end"
+        end
+        if not string.find(xml, "</roblox>", 1, true) then
+            return false, "Missing </roblox> footer"
+        end
+        return true
+    end
 
 	local function save_specific(className, properties)
 		local Ref = Instance.new(className) -- ! Assuming anything passed here is Creatable
@@ -3428,12 +3514,19 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 							and not Property.Special -- TODO: .Special is checked more than once (because it might be updated during ReadProperty)
 							and not (PropertyName == "Source" and isLuaSourceContainer(instance))
 						then -- ? Could be not just "Source" in the future
-							if new_def_inst then
-								default_instance[PropertyName] = index(new_def_inst, PropertyName)
-							end
-							if default_instance[PropertyName] == raw then
-								continue
-							end
+                            -- A recently added/removed API property may also be
+                            -- absent on the freshly-created default instance.
+                            -- Do not abort the entire export on that mismatch.
+                            if new_def_inst then
+                                local defaultOk, defaultValue = pcall(index, new_def_inst, PropertyName)
+                                if defaultOk then
+                                    default_instance[PropertyName] = defaultValue
+                                end
+                            end
+                            if default_instance[PropertyName] ~= nil
+                                and default_instance[PropertyName] == raw then
+                                continue
+                            end
 						end
 
 						-- Serialization start
@@ -3826,19 +3919,33 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 						end
 					end
 				end
-			else
-				local totalstr = header
-				for _, chunk in chunks do
-					totalstr ..= chunk.str
-				end
-				run_with_loading(
-					"Writing " .. get_size_format() .. " to File (Depends on Exec)",
-					nil,
-					true,
-					writefile,
-					placename,
-					totalstr
-				)
+            else
+                -- One allocation, one write. Delta appendfile() may corrupt XML
+                -- when called repeatedly; scripts mode should prefer correctness.
+                local pieces = table.create(#chunks + 1)
+                pieces[1] = header
+                for i, chunk in ipairs(chunks) do
+                    pieces[i + 1] = chunk.str
+                end
+                local totalstr = table.concat(pieces)
+                local valid, reason = validateXMLStructure(totalstr)
+                if not valid then
+                    error("XML validation failed BEFORE writing: " .. tostring(reason))
+                end
+                writefile(placename, totalstr)
+                -- Read back only modest files to avoid exhausting mobile RAM.
+                if type(readfile) == "function" and #totalstr <= 12 * 1024 * 1024 then
+                    local okRead, written = pcall(readfile, placename)
+                    if okRead and type(written) == "string" then
+                        if #written ~= #totalstr or string.sub(written, 1, 128) ~= string.sub(totalstr, 1, 128)
+                            or string.sub(written, -128) ~= string.sub(totalstr, -128) then
+                            error("File write verification failed (Delta truncated or modified the XML)")
+                        end
+                    end
+                end
+                if StatusText then
+                    StatusText.Text = "RZKY Studio | XML validated, file saved"
+                end
 			end
 		end
         end -- not StreamingWrite
@@ -4378,6 +4485,8 @@ local status = new("TextLabel", {
     Name = "Status",
     Text = "Ready • Memeriksa executor...",
     TextSize = 11,
+    TextWrapped = false,
+    TextTruncate = Enum.TextTruncate.AtEnd, -- never overlap SAVE button on mobile
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.Gotham,
     TextColor3 = COLORS.dim,
@@ -4487,7 +4596,7 @@ local outerBytecode = (type(getscriptbytecode) == "function" and getscriptbyteco
     or (type(outerEnv.getscriptbytecode) == "function" and outerEnv.getscriptbytecode)
     or (type(outerEnv.get_script_bytecode) == "function" and outerEnv.get_script_bytecode)
 local featureSummary = (type(writefile) == "function") and "writefile OK" or "writefile NOT SUPPORTED"
-if type(appendfile) == "function" then featureSummary ..= " • streaming OK" end
+if type(appendfile) == "function" then featureSummary ..= " • appendfile available (safe mode OFF)" end
 featureSummary ..= outerDecompiler and " • Decompile AVAILABLE"
     or (outerBytecode and " • Bytecode ONLY" or " • Instance ONLY")
 status.Text = featureSummary
@@ -4543,8 +4652,8 @@ saveBtn.Activated:Connect(function()
                 IgnoreDefaultProperties = true,
                 IgnoreNotArchivable = true,
                 SaveCacheInterval = 4096,
-                StreamingWrite = type(appendfile) == "function",
-                AlternativeWritefile = type(appendfile) == "function",
+                StreamingWrite = false, -- v1.4: prevent partial / shuffled XML writes in Delta
+                AlternativeWritefile = false, -- v1.4: write complete XML in a single call
                 SafeMode = false,
                 AntiIdle = false,
                 ShowStatus = false, -- external branded status display
@@ -4560,16 +4669,17 @@ saveBtn.Activated:Connect(function()
             return backend(options)
         end)
         if not success then
-            status.Text = "ERROR: " .. tostring(result):sub(1, 110)
+            local shortError = tostring(result):match("([^\r\n]+)") or "unknown error"
+            status.Text = "GAGAL • " .. shortError:sub(1, 72)
             status.TextColor3 = Color3.fromRGB(255, 145, 145)
-            warn("[RZKY Studio]", result)
+            warn("[RZKY Studio]", result) -- complete traceback in executor console
         elseif result == true then
             local recovered = report and ((report.source or 0) + (report.linkedSource or 0)) or 0
             local bytecodeOnly = report and report.bytecode or 0
             local instanceOnly = report and report.instanceOnly or 0
             local skipped = report and report.serverSkipped or 0
             local total = report and report.totalScripts or 0
-            status.Text = string.format("SAVED • Lua %d • Bytecode %d • Missing %d", recovered, bytecodeOnly, instanceOnly)
+            status.Text = string.format("SAVED • XML checked • Lua %d • Bytecode %d • Missing %d", recovered, bytecodeOnly, instanceOnly)
             status.TextColor3 = Color3.fromRGB(119, 235, 185)
             -- Sidecar report makes failed decompilations visible without opening Studio.
             if report then
