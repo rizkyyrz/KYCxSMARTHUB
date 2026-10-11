@@ -1,7 +1,9 @@
 --[[
-    RZKY Studio | Instance Saver v1.4 (XML Integrity Fix)
+    RZKY Studio | Instance Saver v1.6 (Decompiler Panic Handling)
     Mobile + desktop GUI / client-visible instance and script source backup
     GUI and wrapper: RZKY Studio edition.
+    v1.6: Never label executor decompiler error messages as recovered source.
+    If decompile() panics, preserve bytecode when accessible and report honestly.
     Serialization engine adapted from user-provided UniversalSynSaveInstance source.
     Upstream/source credits are retained in this comment; do not misrepresent authorship.
     Note: No client executor can access server-only ServerScriptService/ServerStorage
@@ -75,6 +77,45 @@ local writefile = writefile
 
 local getscriptbytecode = global_container.getscriptbytecode
 local base64encode = global_container.base64encode
+
+-- Decompilers can return *error comments* while pcall() still succeeds.
+-- Never treat messages like "-- decompilation panicked" as recovered Lua.
+local function decompileFailureReason(source)
+    if type(source) ~= "string" or source == "" then
+        return "empty decompiler output"
+    end
+    local head = source:sub(1, 900):lower()
+    local reasons = {
+        "decompilation panicked",
+        "decompiler panicked",
+        "decompilation failed",
+        "failed to decompile",
+        "decompiler timed out",
+        "decompilation timed out",
+        "decompiler unavailable",
+        "decompilation unavailable",
+        "decompilation not supported",
+        "decompiler is not supported",
+        "not a supported script",
+        "source not available",
+        "internal decompiler error",
+        "decompiler error",
+        "failed to get script bytecode",
+    }
+    for _, phrase in ipairs(reasons) do
+        if string.find(head, phrase, 1, true) then
+            return phrase
+        end
+    end
+    -- Many executors return a standalone single-line -- Error: ... comment.
+    local firstLine = head:match("^[^\r\n]*") or ""
+    local normalized = firstLine:gsub("^%s*%-%-%s*", ""):gsub("^%s+", "")
+    if normalized:match("^error[%s:]") or normalized:match("^panic[%s:]")
+        or normalized:match("^assertion failed") then
+        return normalized:sub(1, 140)
+    end
+    return nil
+end
 
 -- Delta's available executor functions differ by build/platform.
 -- Only use functions already present; do not silently load third-party decompilers.
@@ -2256,6 +2297,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
         bytecode = 0,
         instanceOnly = 0,
         failedDecompile = 0,
+        panicCount = 0,
+        lastDecompileError = "",
         totalScripts = 0,
         serverSkipped = 0,
         ignoredScripts = 0,
@@ -2926,7 +2969,10 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
         SaveBytecode = function(targetScript)
             local ok, raw = getbytecode(targetScript)
             local maxLength = 1024 * 1024 -- per-script mobile safety limit
-            if ok and type(raw) == "string" and #raw > 0 and #raw <= maxLength then
+            if ok and type(raw) == "string" and #raw > 0 and #raw <= maxLength
+                and not decompileFailureReason(raw)
+                and not string.find(raw:sub(1, 150):lower(), "decompressbytecode error", 1, true)
+                and not string.find(raw:sub(1, 150):lower(), "hash mismatch", 1, true) then
                 local encoded = base64encode(raw)
                 if type(encoded) == "string" and encoded ~= "" then
                     return "-- [RZKY Studio] Bytecode (Base64; NOT editable Lua source):\n-- "
@@ -2952,6 +2998,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
                         bytecode = result
                         local cached = ldeccache[bytecode]
                         if type(cached) == "string" and #cached > 0
+                            and not decompileFailureReason(cached)
                             and not string.find(cached, "--[[ Failed to decompile.", 1, true) then
                             Report.source += 1
                             return cached, true
@@ -2966,19 +3013,16 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
                     "Decompiling " .. targetScript.Name, true, nil,
                     safeDecompile, targetScript
                 )
-                local validSource = ok and type(result) == "string" and #result > 0
+                local failureReason = (not ok and tostring(result or "unknown failure"))
+                    or decompileFailureReason(result)
+                local validSource = ok and not failureReason
                 if validSource then
-                    local resultLower = string.lower(result)
-                    validSource = not (string.find(resultLower, "failed to decompile", 1, true)
-                        or string.find(resultLower, "decompiler timed out", 1, true)
-                        or string.find(resultLower, "decompilation failed", 1, true)
-                        or string.find(resultLower, "decompilation unavailable", 1, true)
-                        or string.find(resultLower, "decompilation not supported", 1, true)
-                        or string.find(resultLower, "decompiler unavailable", 1, true)
-                        or string.find(resultLower, "not a supported script", 1, true)
-                        or string.find(resultLower, "the script is empty", 1, true)
-                        or string.find(resultLower, "source not available", 1, true)
-                        or string.find(resultLower, "decompiler is not supported", 1, true))
+                    -- A comment-only diagnostic is not successful source recovery.
+                    local trimmed = result:gsub("^%s+", "")
+                    if trimmed:match("^%-%-%s*the script is empty") then
+                        failureReason = "empty script"
+                        validSource = false
+                    end
                 end
                 if validSource then
                     result = string.gsub(result, "\0", "\\0")
@@ -2989,8 +3033,13 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
                     return result, true
                 end
                 Report.failedDecompile += 1
-                return "-- [RZKY Studio] Source recovery failed: "
-                    .. tostring(result or "Empty output"):gsub("[\r\n]", " "), false
+                local message = tostring(failureReason or result or "Empty output"):gsub("[\r\n]", " ")
+                if #message > 180 then message = message:sub(1, 180) .. "..." end
+                Report.lastDecompileError = message
+                if string.find(message:lower(), "panic", 1, true) then
+                    Report.panicCount += 1
+                end
+                return "-- [RZKY Studio] Source recovery failed: " .. message, false
             end
         else
             ldecompile = function()
@@ -3039,7 +3088,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
         else
             -- Some Studio/privileged environments can read Source directly.
             local directOk, directSource = pcall(function() return target.Source end)
-            local sourceRecovered = directOk and type(directSource) == "string" and #directSource > 0
+            local sourceRecovered = directOk and type(directSource) == "string"
+                and #directSource > 0 and not decompileFailureReason(directSource)
             if sourceRecovered then
                 code = directSource
                 Report.source += 1
@@ -4312,7 +4362,7 @@ local content = new("ScrollingFrame", {
     BorderSizePixel = 0,
     ScrollBarThickness = 3,
     ScrollingDirection = Enum.ScrollingDirection.Y,
-    CanvasSize = UDim2.fromOffset(0, 372),
+    CanvasSize = UDim2.fromOffset(0, 500),
     AutomaticCanvasSize = Enum.AutomaticSize.Y,
 }, frame)
 local layout = new("UIListLayout", {
@@ -4402,8 +4452,75 @@ for index, info in ipairs(modeNames) do
 end
 refreshModes()
 
-local pathLabel = new("TextLabel", {
+-- v1.5: The exported place/model must use the name shown in the GUI.
+-- The serializer outputs Roblox XML (.rbxlx/.rbxmx), not binary .rbxl/.rbxm.
+local filenameLabel = new("TextLabel", {
     LayoutOrder = 3,
+    Text = "FILE NAME  •  .rbxlx (Place) / .rbxmx (Model)",
+    Font = Enum.Font.GothamMedium,
+    TextSize = 11,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextColor3 = COLORS.dim,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 20),
+}, content)
+
+local filenameBox = new("TextBox", {
+    Name = "FileName",
+    LayoutOrder = 4,
+    Text = "RZKYStudio_" .. tostring(game.PlaceId),
+    PlaceholderText = "Masukkan nama file hasil save",
+    Font = Enum.Font.Gotham,
+    TextSize = 13,
+    TextColor3 = COLORS.text,
+    PlaceholderColor3 = COLORS.dim,
+    BackgroundColor3 = COLORS.panel,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Size = UDim2.new(1, 0, 0, 42),
+}, content)
+round(filenameBox, 10)
+stroke(filenameBox, 0.48)
+new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, filenameBox)
+
+-- Load the place's actual name when possible; do not replace manual edits.
+local filenameEdited = false
+local autoUpdatingName = false
+filenameBox:GetPropertyChangedSignal("Text"):Connect(function()
+    if not autoUpdatingName then
+        filenameEdited = true
+    end
+end)
+task.spawn(function()
+    local ok, info = pcall(function()
+        return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+    end)
+    if ok and type(info) == "table" and type(info.Name) == "string" and info.Name ~= "" and not filenameEdited then
+        autoUpdatingName = true
+        filenameBox.Text = info.Name
+        autoUpdatingName = false
+    end
+end)
+
+local function sanitizeOutputName(value)
+    local name = tostring(value or "")
+    -- Remove a user-supplied extension; serializer owns the proper extension.
+    name = name:gsub("%.[Rr][Bb][Xx][Ll][Xx]$", "")
+    name = name:gsub("%.[Rr][Bb][Xx][Mm][Xx]$", "")
+    name = name:gsub("%.[Rr][Bb][Xx][Ll]$", "")
+    name = name:gsub("%.[Rr][Bb][Xx][Mm]$", "")
+    -- File system-safe output; no slashes, paths or untrusted special characters.
+    name = name:gsub("[^%w%s_%-]", "")
+    name = name:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if name == "" then
+        name = "RZKYStudio_" .. tostring(game.PlaceId)
+    end
+    return name:sub(1, 100)
+end
+
+local pathLabel = new("TextLabel", {
+    LayoutOrder = 5,
     Text = "PATH INSTANCE  (untuk Custom)",
     Font = Enum.Font.GothamMedium,
     TextSize = 11,
@@ -4414,7 +4531,7 @@ local pathLabel = new("TextLabel", {
 }, content)
 local pathBox = new("TextBox", {
     Name = "InstancePath",
-    LayoutOrder = 4,
+    LayoutOrder = 6,
     Text = "",
     PlaceholderText = "Workspace.NamaModel",
     Font = Enum.Font.Code,
@@ -4432,7 +4549,7 @@ stroke(pathBox, 0.48)
 new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, pathBox)
 
 local option = new("TextButton", {
-    LayoutOrder = 5,
+    LayoutOrder = 7,
     Text = "Recover client scripts: ON   •   Delta",
     Font = Enum.Font.GothamMedium,
     TextSize = 12,
@@ -4452,7 +4569,7 @@ option.Activated:Connect(function()
 end)
 
 local note = new("TextLabel", {
-    LayoutOrder = 6,
+    LayoutOrder = 8,
     Text = "Source client dicoba otomatis. Script server tidak tersedia. Hasil tergantung Delta.",
     TextWrapped = true,
     Font = Enum.Font.Gotham,
@@ -4597,7 +4714,7 @@ local outerBytecode = (type(getscriptbytecode) == "function" and getscriptbyteco
     or (type(outerEnv.get_script_bytecode) == "function" and outerEnv.get_script_bytecode)
 local featureSummary = (type(writefile) == "function") and "writefile OK" or "writefile NOT SUPPORTED"
 if type(appendfile) == "function" then featureSummary ..= " • appendfile available (safe mode OFF)" end
-featureSummary ..= outerDecompiler and " • Decompile AVAILABLE"
+featureSummary ..= outerDecompiler and " • Decompile DETECTED (untested)"
     or (outerBytecode and " • Bytecode ONLY" or " • Instance ONLY")
 status.Text = featureSummary
 
@@ -4633,9 +4750,8 @@ saveBtn.Activated:Connect(function()
             if type(backend) ~= "function" then
                 error("Serializer gagal dimuat; cek akses HttpGet/API Dump")
             end
-            local name = ("RZKYStudio_%s_%s_%s"):format(
-                tostring(game.PlaceId), selectedMode, tostring(os.time())
-            )
+            local name = sanitizeOutputName(filenameBox.Text)
+            filenameBox.Text = name -- show the exact basename that will be saved
             local useScripts = selectedMode == "scripts" or selectedDecompile
             local options = {
                 FilePath = name,
@@ -4679,7 +4795,9 @@ saveBtn.Activated:Connect(function()
             local instanceOnly = report and report.instanceOnly or 0
             local skipped = report and report.serverSkipped or 0
             local total = report and report.totalScripts or 0
-            status.Text = string.format("SAVED • XML checked • Lua %d • Bytecode %d • Missing %d", recovered, bytecodeOnly, instanceOnly)
+            local failedCount = report and (report.failedDecompile or 0) or 0
+            status.Text = "SAVED • Source " .. recovered .. "/" .. total .. " | Fail " .. failedCount
+            -- Exact filename is printed to the console + ScriptReport file.
             status.TextColor3 = Color3.fromRGB(119, 235, 185)
             -- Sidecar report makes failed decompilations visible without opening Studio.
             if report then
@@ -4690,10 +4808,15 @@ saveBtn.Activated:Connect(function()
                     "Place file: " .. tostring(detail),
                     "Scripts scanned: " .. total,
                     "Lua source recovered: " .. recovered,
+                    "Decompilation failed: " .. tostring(report.failedDecompile or 0),
+                    "Decompiler panics: " .. tostring(report.panicCount or 0),
+                    "Last decompile error: " .. tostring(report.lastDecompileError or ""),
                     "Bytecode only: " .. bytecodeOnly,
                     "Instance only: " .. instanceOnly,
                     "Server context skipped: " .. skipped,
                     "Ignored: " .. tostring(report.ignoredScripts or 0),
+                    "Note: This saver cannot fix a broken Delta decompiler.",
+                    "Note: SOURCE_RECOVERED must not be used for decompiler panic/error output.",
                     "Note: Bytecode comments are NOT executable Lua source.",
                     "Note: The game client cannot read server-only script sources.",
                     "",
@@ -4713,11 +4836,16 @@ saveBtn.Activated:Connect(function()
                     warn("[RZKY Studio] Cannot save script report:", reason)
                 end
             end
+            if report and (report.panicCount or 0) > 0 then
+                warn("[RZKY Studio] Delta decompile() panicked on " .. report.panicCount
+                    .. " scripts. Ini bukan source yang berhasil direcover; cek ScriptReport.")
+            end
             print("[RZKY Studio] Saved:", detail)
             print("[RZKY Studio] Decompiler:", report and report.decompiler or "unknown")
             print("[RZKY Studio] Source recovered:", recovered,
                 "Bytecode only:", bytecodeOnly, "Instance only:", instanceOnly,
-                "Server skipped:", skipped)
+                "Server skipped:", skipped,
+                "Decompiler panics:", report and report.panicCount or 0)
         else
             status.Text = "GAGAL: " .. tostring(detail or "Executor/API tidak mendukung")
             status.TextColor3 = Color3.fromRGB(255, 145, 145)
